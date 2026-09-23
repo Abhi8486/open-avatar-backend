@@ -47,7 +47,6 @@ default:
         history_length: 20
         system_prompt: "Please act as an AI assistant. Answer the user's questions in a concise conversation of two or three sentences, using appropriate punctuation marks, without discussing punctuation-related topic content."
         api_url: "https://api.groq.com/openai/v1"
-        api_key: "YOUR_GROQ_API_KEY" # default=os.getenv("DASHSCOPE_API_KEY"), explicit key overrides it
       AvatarMusetalk:
         module: avatar/musetalk/avatar_handler_musetalk
         fps: 24  # Video frame rate
