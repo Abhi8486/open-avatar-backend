@@ -338,15 +338,19 @@ def download_musetalk(source, **_kwargs):
         if not _hf_download(repo_id, local_dir, include=hf_include, use_mirror=use_mirror):
             all_ok = False
 
-    # s3fd from ModelScope (same as shell script: git clone)
+    # s3fd (download direct to avoid Git LFS corruption)
     s3fd_dir = mt_dir / "s3fd-619a316812"
-    if s3fd_dir.exists():
+    s3fd_dir.mkdir(parents=True, exist_ok=True)
+    s3fd_file = s3fd_dir / "s3fd-619a316812.pth"
+    
+    if s3fd_file.exists() and s3fd_file.stat().st_size > 1024:
         print("  s3fd already exists, skipping.")
     else:
-        run_cmd(
-            ["git", "clone", "https://www.modelscope.cn/HaveAnApplePie/s3fd-619a316812.git",
-             str(s3fd_dir)],
-            "Downloading s3fd from ModelScope",
+        print("  Downloading s3fd weights directly...")
+        import urllib.request
+        urllib.request.urlretrieve(
+            "https://www.adrianbulat.com/downloads/python-fan/s3fd-619a316812.pth", 
+            str(s3fd_file)
         )
 
     # Create symlink for torch hub cache (replaces manual ln -s in README)
