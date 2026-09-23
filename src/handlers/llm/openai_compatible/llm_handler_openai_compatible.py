@@ -28,6 +28,7 @@ class LLMConfig(HandlerBaseConfigModel, BaseModel):
     api_url: str = Field(default=None)
     enable_video_input: bool = Field(default=False)
     history_length: int = Field(default=20)
+    max_tokens: int = Field(default=150)
 
 
 class LLMContext(HandlerContext):
@@ -39,6 +40,7 @@ class LLMContext(HandlerContext):
         self.system_prompt = None
         self.api_key = None
         self.api_url = None
+        self.max_tokens = 150
         self.client = None
         self.input_texts = ""
         self.output_texts = ""
@@ -99,6 +101,7 @@ class HandlerLLM(HandlerBase, ABC):
         context.api_key = handler_config.api_key
         context.api_url = handler_config.api_url
         context.enable_video_input = handler_config.enable_video_input
+        context.max_tokens = handler_config.max_tokens
         context.history = ChatHistory(history_length=handler_config.history_length)
         context.client =    OpenAI(  
             api_key=context.api_key,
@@ -156,6 +159,7 @@ class HandlerLLM(HandlerBase, ABC):
                 messages=[
                     context.system_prompt,
                 ] + current_content,
+                max_tokens=context.max_tokens,
                 stream=True,
                 stream_options={"include_usage": True}
             )
