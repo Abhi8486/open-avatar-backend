@@ -1,0 +1,230 @@
+default:
+  logger:
+    log_level: "DEBUG"
+  service:
+    host: "0.0.0.0"
+    port: 8283
+    cert_file: "ssl_certs/localhost.crt"
+    cert_key: "ssl_certs/localhost.key"
+
+  # History module configuration (required for duplex interrupt detection)
+  history:
+    retention_mode: "by_both"
+    max_events: 1000
+    max_age_seconds: 3600
+    cleanup_interval_seconds: 30
+
+  chat_engine:
+    model_root: "models"
+    concurrent_limit: 1
+    handler_search_path:
+      - "src/handlers"
+    handler_configs:
+      RtcClient:
+        module: client/rtc_client/client_handler_rtc
+        connection_ttl: 900
+        output_video_fps: 25  # Must match FlashHead fps (25) for correct A/V sync
+
+      # === Interrupt Handler - Receives INTERRUPT signal and executes stream cancellation ===
+      InterruptHandler:
+        module: logic/interrupt/interrupt_handler
+
+      # === Duplex VAD - Always processes audio, unaffected by INPUT_DISABLE ===
+      SileroVad:
+        module: vad/silerovad/duplex_vad_handler
+        speaking_threshold: 0.25
+        start_delay: 1024
+        end_delay: 32000
+        early_end_delay: 5000
+        early_end_repeat_delay: 1000
+        buffer_look_back: 2048
+        speech_padding: 512
+        volume_threshold: -50
+        post_end_monitor_samples: 32000
+        reconnect_threshold_samples: 32000
+        post_end_energy_threshold: -5
+
+      # === ASR - Receives duplex audio via type override ===
+      SenseVoice:
+        enabled: True
+        module: asr/sensevoice/asr_handler_sensevoice
+        model_name: "iic/SenseVoiceSmall"
+        input_type_override:
+          HUMAN_AUDIO: HUMAN_DUPLEX_AUDIO
+        output_type_override:
+          HUMAN_TEXT: HUMAN_DUPLEX_TEXT
+
+      # === Smart Turn EOU - ONNX model-based end-of-utterance detection ===
+      SmartTurnEOU:
+        enabled: true
+        module: vad/smart_turn_eou/eou_handler_smart_turn
+        threshold: 0.8
+        max_buffer_seconds: 300.0
+        sample_rate: 16000
+        model_path: "models/smart_turn/smart-turn-v3.1-cpu.onnx"
+        input_type_override:
+          HUMAN_AUDIO: HUMAN_DUPLEX_AUDIO
+
+      # === Semantic Turn Detector - Handles interrupt detection and utterance completion ===
+      SemanticTurnDetector:
+        enabled: true
+        module: llm/semantic_turn_detector/semantic_turn_detector_handler
+        duplex_mode: true
+        # Main LLM for semantic interrupt judgment
+        api_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        # api_key: ""  # default=os.getenv("SEMANTIC_LLM_EAS_TOKEN") or DASHSCOPE_API_KEY
+        model_name: "qwen-plus"
+        # Interrupt detection config
+        enable_interrupt_detection: true
+        interrupt_on_any_speech: false
+        min_text_length_for_interrupt: 2
+        # Utterance completion detection
+        enable_completion_detection: false
+        min_text_length_for_completion: 1
+        # Interrupt intent evaluation LLM
+        interrupt_judge_api_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        # interrupt_judge_api_key: ""  # default=os.getenv("INTERRUPT_JUDGE_LLM_EAS_TOKEN") or DASHSCOPE_API_KEY
+        interrupt_judge_model_name: "qwen-plus"
+        request_timeout: 3.0
+        max_context_turns: 3
+
+      # === TTS ===
+      CosyVoice:
+        enabled: True
+        module: tts/bailian_tts/tts_handler_cosyvoice_bailian
+        voice: "longxing_v3"
+        model_name: "cosyvoice-v3-flash"
+        # api_key: "" # default=os.getenv("DASHSCOPE_API_KEY")
+
+      # ========== Multimodal Agent System ==========
+      
+      # Vision Perception Agent
+      PerceptionAgent:
+        enabled: True
+        module: agent/perception/perception_handler
+        summary_interval: 5.0
+        max_buffer_frames: 30
+        key_frame_strategy: "interval"
+        key_frame_interval: 10
+        vision_model_type: "openai"
+        llm_model: "qwen3-vl-flash"
+        # api_key: ""  # default=os.getenv("DASHSCOPE_API_KEY")
+        api_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        max_frames: 8
+        enable_event_detection: True
+        event_detection_interval: 5
+        max_concurrent_requests: 3
+      
+      # Chat Agent — Unified main conversation Agent
+      ChatAgent:
+        enabled: True
+        module: agent/chat_agent_handler
+        llm_model: "qwen3.6-plus"
+        # api_key: ""  # default=os.getenv("DASHSCOPE_API_KEY")
+        api_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        # L1 Stable Core — OAC real-time rules + tool usage guide + structured tag interpretation
+        stable_core: |
+          You are a real-time digital human assistant with vision capabilities, conversing face-to-face with the user through a camera.
+
+          ## Output Constraints
+          - Respond in natural, conversational spoken language with a friendly tone.
+          - Keep answers concise (typically 2-3 sentences), unless the user explicitly requests details.
+          - Do not output Markdown formatting, code blocks, or bullet lists.
+          - Do not call yourself an "AI" or "language model"; you are this digital human persona.
+
+          ## Vision Rules
+          - The <environment-state> tag describes the continuous environment state currently visible to you.
+          - You may naturally mention observed content, but do not bring it up in every sentence.
+          - When the user asks "Can you see me?" and an environment description exists, respond affirmatively and describe what you see.
+
+          ## Tool Usage
+          You have the following capabilities to use proactively when appropriate:
+          - When the user mentions past events, preferences, or prior agreements → use memory_search to search long-term memory.
+          - When the user asks "What tasks did I assign you?", scheduled reminders, or agendas → use list_scheduled_tasks to check.
+          - When unsure of the user's name or persona settings → use get_agent_profile to fetch.
+          - When the user's question requires real-time data (time, weather) → use corresponding tools.
+          - Some tools are asynchronous; after calling, you'll receive {"status": "submitted"}, decide your response accordingly.
+          - After tool returns results, integrate them naturally into spoken response without echoing raw JSON.
+
+          ## Structured Tag Descriptions
+          You will receive the following structured tags in conversation:
+          - <environment-state>: Continuous environment state description, treat as background context rather than a recent event.
+          - <observation event="true">: Recent environment event, consider whether to respond.
+          - <observation compact="true">: Historical perception summary, for reference only.
+          - <background-results>: Background task completion notification; decide whether to inform the user.
+          - <dialogue-summary>: Compressed summary of previous conversation to help maintain context.
+        # L2 Persona Snapshot — Local default; if oc_bridge is enabled, uses IDENTITY.md/SOUL.md under ~/.openclaw/workspace
+        persona_snapshot: |
+          Persona: Friendly and approachable, chatting like a friend. Observant of user state changes.
+          Tone: Relaxed and natural, caring appropriately about user emotions.
+        # Max characters per layer
+        persona_max_chars: 2500  # L2: IDENTITY.md + SOUL.md + USER.md total ~2400 chars
+        perception_max_chars: 800  # L3: Environment State
+        # Memory config
+        perception_max_entries: 100
+        perception_decay_rate: 0.1
+        max_dialogue_turns: 20
+        # Dialogue context compression
+        context_compact:
+          enabled: true
+          compact_threshold: 15
+          keep_recent: 5
+          save_transcript: true
+          rehydrate_task_brief: true
+          rehydrate_env_state: true
+          # compact_model: "qwen-plus"  # Default uses main model
+        # Tool usage
+        tool_use:
+          enabled: true
+          max_tool_rounds: 5
+          register_demo_tools: true
+        # OpenClaw Bridge — Plugin Tools MCP + oac-bridge HTTP channel
+        oc_bridge:
+          enabled: true
+          plugin_tools_cmd: "node /home/luyi/Code/openclaw/dist/mcp/plugin-tools-serve.js"
+          gateway_http_url: "http://localhost:18789"
+          callback_port: 8011
+        # Proactive message triggers
+        proactive:
+          enabled: true
+          event_triggers:
+            waving:
+              enabled: true
+              cooldown: 30.0
+              hint: "Kindly respond to the user's greeting and ask how you can help."
+            showing_object:
+              enabled: true
+              cooldown: 30.0
+              hint: "The user is showing an object; comment on or ask about it."
+            asking_for_attention:
+              enabled: true
+              cooldown: 30.0
+              hint: "The user is seeking your attention; respond actively and ask how to help."
+            arriving:
+              enabled: true
+              cooldown: 60.0
+              hint: "Someone entered the frame; welcome them appropriately."
+            leaving:
+              enabled: true
+              cooldown: 60.0
+              hint: "The user seems to be leaving; say goodbye appropriately."
+          idle_trigger:
+            enabled: false
+            idle_seconds: 60.0
+            hint: "The user has been quiet for a while; check in gently or start casual chat."
+            mode_overrides:
+              companion: 120.0
+              office: 300.0
+
+      # === FlashHead Avatar (Lite Mode) ===
+      FlashHead:
+        module: avatar/flashhead/avatar_handler_flashhead
+        ckpt_dir: "models/SoulX-FlashHead-1_3B"
+        wav2vec_dir: "models/wav2vec2-base-960h"
+        model_type: "lite"
+        cond_image_path: "resource/avatar/flashhead/girl.png"  # Replace with your image
+        fps: 25
+        base_seed: 42
+        use_face_crop: false
+        debug: true
+        idle_noise_amplitude: 0.003

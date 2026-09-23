@@ -1,0 +1,263 @@
+"""
+Agent System Shared Data Models
+
+Defines data structures passed between Perception and ChatAgent.
+"""
+from dataclasses import dataclass, field
+from typing import List, Dict, Optional
+
+
+# ===== Layered Visual Context =====
+
+@dataclass
+class UserState:
+    """Fine-grained: User state."""
+    emotion: str = ""           # focused, happy, confused, sad, angry, surprised, neutral
+    gaze: str = ""              # screen, away, camera, down
+    posture: str = ""           # sitting, standing, leaning, lying
+    action: str = ""            # typing, speaking, idle, reading, writing, gesturing
+    
+    def to_dict(self) -> Dict:
+        return {
+            "emotion": self.emotion,
+            "gaze": self.gaze,
+            "posture": self.posture,
+            "action": self.action,
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict) -> "UserState":
+        return cls(
+            emotion=data.get("emotion", ""),
+            gaze=data.get("gaze", ""),
+            posture=data.get("posture", ""),
+            action=data.get("action", ""),
+        )
+    
+    def to_text(self) -> str:
+        """Convert to text description for injection into prompt."""
+        parts = []
+        if self.emotion:
+            parts.append(f"Emotion: {self.emotion}")
+        if self.gaze:
+            parts.append(f"Gaze: {self.gaze}")
+        if self.posture:
+            parts.append(f"Posture: {self.posture}")
+        if self.action:
+            parts.append(f"Action: {self.action}")
+        return ", ".join(parts) if parts else "Unknown"
+
+
+@dataclass
+class SceneStructure:
+    """Medium-grained: Structured scene info."""
+    location: str = ""                                      # Office, Meeting Room, Home, Outdoors
+    people: List[str] = field(default_factory=list)         # List of detected people
+    objects: List[str] = field(default_factory=list)        # List of key objects
+    activities: List[str] = field(default_factory=list)     # Ongoing activities
+    
+    def to_dict(self) -> Dict:
+        return {
+            "location": self.location,
+            "people": self.people,
+            "objects": self.objects,
+            "activities": self.activities,
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict) -> "SceneStructure":
+        return cls(
+            location=data.get("location", ""),
+            people=data.get("people", []),
+            objects=data.get("objects", []),
+            activities=data.get("activities", []),
+        )
+    
+    def to_text(self) -> str:
+        """Convert to text description."""
+        parts = []
+        if self.location:
+            parts.append(f"Location: {self.location}")
+        if self.people:
+            parts.append(f"People: {', '.join(self.people)}")
+        if self.objects:
+            parts.append(f"Objects: {', '.join(self.objects)}")
+        if self.activities:
+            parts.append(f"Activities: {', '.join(self.activities)}")
+        return "; ".join(parts) if parts else "Unknown scene"
+
+
+@dataclass
+class DetectedEvent:
+    """
+    Detected Interaction Event
+    
+    Detected by visual model during video frame analysis, used to trigger proactive interactions.
+    """
+    event_type: str = ""        # waving, leaving, arriving, showing_object, asking_for_attention
+    confidence: float = 0.0     # Confidence 0.0-1.0
+    description: str = ""       # Event description
+    
+    # Event type constants
+    WAVING = "waving"                       # Waving hello
+    LEAVING = "leaving"                     # Leaving frame
+    ARRIVING = "arriving"                   # Entering frame
+    SHOWING_OBJECT = "showing_object"       # Showing an object
+    ASKING_FOR_ATTENTION = "asking_for_attention"  # Seeking attention
+    
+    # Confidence threshold
+    MIN_CONFIDENCE = 0.7
+    
+    def to_dict(self) -> Dict:
+        return {
+            "event_type": self.event_type,
+            "confidence": self.confidence,
+            "description": self.description,
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict) -> "DetectedEvent":
+        return cls(
+            event_type=data.get("event_type", ""),
+            confidence=data.get("confidence", 0.0),
+            description=data.get("description", ""),
+        )
+    
+    def is_valid(self) -> bool:
+        """Check if event is valid (confidence sufficiently high)."""
+        return self.confidence >= self.MIN_CONFIDENCE and self.event_type != ""
+    
+    def should_trigger_response(self) -> bool:
+        """Determine whether proactive response should be triggered."""
+        if not self.is_valid():
+            return False
+        # These event types should trigger proactive responses
+        trigger_types = {self.WAVING, self.SHOWING_OBJECT, self.ASKING_FOR_ATTENTION}
+        return self.event_type in trigger_types
+
+
+@dataclass
+class PerceptionData:
+    """
+    Layered Visual Context
+    
+    Generated by PerceptionHandler and passed to ChatAgentHandler.
+    """
+    # Coarse-grained: One-sentence scene summary
+    scene_summary: str = ""
+    # Medium-grained: Structured info
+    scene_structure: SceneStructure = field(default_factory=SceneStructure)
+    # Fine-grained: User state
+    user_state: UserState = field(default_factory=UserState)
+    # Detected interaction events
+    detected_events: List["DetectedEvent"] = field(default_factory=list)
+    # Timestamp
+    timestamp: float = 0.0
+    
+    def to_dict(self) -> Dict:
+        return {
+            "scene_summary": self.scene_summary,
+            "scene_structure": self.scene_structure.to_dict(),
+            "user_state": self.user_state.to_dict(),
+            "detected_events": [e.to_dict() for e in self.detected_events],
+            "timestamp": self.timestamp,
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict) -> "PerceptionData":
+        detected_events = [
+            DetectedEvent.from_dict(e) for e in data.get("detected_events", [])
+        ]
+        return cls(
+            scene_summary=data.get("scene_summary", ""),
+            scene_structure=SceneStructure.from_dict(data.get("scene_structure", {})),
+            user_state=UserState.from_dict(data.get("user_state", {})),
+            detected_events=detected_events,
+            timestamp=data.get("timestamp", 0.0),
+        )
+    
+    def get_context_by_granularity(self, granularity: str = "coarse") -> str:
+        """
+        Get context text by granularity level.
+        
+        Args:
+            granularity: "coarse" (coarse), "medium" (medium), "fine" (fine), "all" (all)
+        """
+        if granularity == "coarse":
+            return self.scene_summary
+        elif granularity == "medium":
+            return f"{self.scene_summary}\n{self.scene_structure.to_text()}"
+        elif granularity == "fine":
+            return f"{self.scene_summary}\n{self.scene_structure.to_text()}\nUser State: {self.user_state.to_text()}"
+        else:  # "all"
+            return self.get_context_by_granularity("fine")
+    
+    def get_triggerable_events(self) -> List["DetectedEvent"]:
+        """Get events that should trigger a response."""
+        return [e for e in self.detected_events if e.should_trigger_response()]
+    
+    def has_triggerable_events(self) -> bool:
+        """Check if any events should trigger a response."""
+        return len(self.get_triggerable_events()) > 0
+
+
+# ===== Environment Events =====
+
+@dataclass
+class EnvironmentEvent:
+    """
+    Environment Event
+    
+    Detected by PerceptionHandler and sent to ChatAgentHandler via ChatDataType.ENVIRONMENT_EVENT.
+    """
+    event_type: str = ""                    # waving, leaving, arriving, showing_object, asking_for_attention
+    description: str = ""                   # Detailed description of event
+    confidence: float = 0.0                 # Confidence 0.0-1.0
+    urgency: str = "low"                    # critical (immediate response), high (priority), low (deferrable)
+    timestamp: float = 0.0
+    
+    # Optional metadata
+    metadata: Dict = field(default_factory=dict)
+    
+    def to_dict(self) -> Dict:
+        return {
+            "event_type": self.event_type,
+            "description": self.description,
+            "confidence": self.confidence,
+            "urgency": self.urgency,
+            "timestamp": self.timestamp,
+            "metadata": self.metadata,
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict) -> "EnvironmentEvent":
+        return cls(
+            event_type=data.get("event_type", ""),
+            description=data.get("description", ""),
+            confidence=data.get("confidence", 0.0),
+            urgency=data.get("urgency", "low"),
+            timestamp=data.get("timestamp", 0.0),
+            metadata=data.get("metadata", {}),
+        )
+    
+    @classmethod
+    def from_detected_event(cls, detected: "DetectedEvent", urgency: str = "high") -> "EnvironmentEvent":
+        """Create EnvironmentEvent from DetectedEvent."""
+        import time
+        return cls(
+            event_type=detected.event_type,
+            description=detected.description,
+            confidence=detected.confidence,
+            urgency=urgency,
+            timestamp=time.time(),
+        )
+    
+    def should_interrupt(self) -> bool:
+        """Determine whether current dialogue should be interrupted."""
+        return self.urgency == "critical"
+    
+    def should_respond_immediately(self) -> bool:
+        """Determine whether immediate response is required."""
+        return self.urgency in ("critical", "high")
+
+

@@ -1,0 +1,116 @@
+default:
+  logger:
+    log_level: "INFO"
+  service:
+    host: "0.0.0.0"
+    port: 8282
+    cert_file: "ssl_certs/localhost.crt"
+    cert_key: "ssl_certs/localhost.key"
+
+  # History module configuration (required for duplex interrupt detection)
+  history:
+    retention_mode: "by_both"
+    max_events: 1000
+    max_age_seconds: 3600
+    cleanup_interval_seconds: 30
+
+  chat_engine:
+    model_root: "models"
+    concurrent_limit: 2
+    handler_search_path:
+      - "src/handlers"
+    handler_configs:
+      RtcClient:
+        module: client/rtc_client/client_handler_rtc
+        connection_ttl: 900
+
+      # === Interrupt Handler - Receives INTERRUPT signal and executes stream cancellation ===
+      InterruptHandler:
+        module: logic/interrupt/interrupt_handler
+
+      # === Duplex VAD - Always processes audio, unaffected by CLIENT_PLAYBACK stream lifecycle ===
+      SileroVad:
+        module: vad/silerovad/duplex_vad_handler
+        speaking_threshold: 0.25
+        start_delay: 1024
+        end_delay: 32000
+        early_end_delay: 5000
+        early_end_repeat_delay: 1000
+        buffer_look_back: 2048
+        speech_padding: 512
+        volume_threshold: -50
+        post_end_monitor_samples: 32000
+        reconnect_threshold_samples: 32000
+        post_end_energy_threshold: -5
+
+      # === ASR - Receives duplex audio via type override ===
+      SenseVoice:
+        enabled: True
+        module: asr/sensevoice/asr_handler_sensevoice
+        model_name: "iic/SenseVoiceSmall"
+        input_type_override:
+          HUMAN_AUDIO: HUMAN_DUPLEX_AUDIO
+        output_type_override:
+          HUMAN_TEXT: HUMAN_DUPLEX_TEXT
+
+      # === Smart Turn EOU - ONNX model-based end-of-utterance detection ===
+      SmartTurnEOU:
+        enabled: true
+        module: vad/smart_turn_eou/eou_handler_smart_turn
+        threshold: 0.8
+        max_buffer_seconds: 300.0
+        sample_rate: 16000
+        model_path: "models/smart_turn/smart-turn-v3.1-cpu.onnx"
+        input_type_override:
+          HUMAN_AUDIO: HUMAN_DUPLEX_AUDIO
+
+      # === Semantic Turn Detector - Handles interrupt detection and utterance completion ===
+      SemanticTurnDetector:
+        enabled: true
+        module: llm/semantic_turn_detector/semantic_turn_detector_handler
+        duplex_mode: true
+        # Main LLM for semantic interrupt judgment
+        api_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        # api_key: ""  # default=os.getenv("SEMANTIC_LLM_EAS_TOKEN") or DASHSCOPE_API_KEY
+        model_name: "qwen-plus"
+        # Interrupt detection config
+        enable_interrupt_detection: true
+        interrupt_on_any_speech: false  # Do not interrupt directly, use semantic evaluation
+        min_text_length_for_interrupt: 2
+        # Utterance completion detection (disabled, relies on VAD end_delay + SmartTurnEOU)
+        enable_completion_detection: false
+        min_text_length_for_completion: 1
+        # Interrupt intent evaluation LLM
+        interrupt_judge_api_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        # interrupt_judge_api_key: ""  # default=os.getenv("INTERRUPT_JUDGE_LLM_EAS_TOKEN") or DASHSCOPE_API_KEY
+        interrupt_judge_model_name: "qwen-plus"
+        request_timeout: 3.0
+        max_context_turns: 3
+
+      # === TTS ===
+      CosyVoice:
+        enabled: True
+        module: tts/bailian_tts/tts_handler_cosyvoice_bailian
+        voice: "longxiaochun"
+        model_name: "cosyvoice-v1"
+        # api_key: "" # default=os.getenv("DASHSCOPE_API_KEY")
+
+      # === LLM ===
+      LLMOpenAICompatible:
+        enabled: True
+        module: llm/openai_compatible/llm_handler_openai_compatible
+        model_name: "qwen-plus"
+        enable_video_input: False
+        history_length: 20
+        system_prompt: "Please act as an AI assistant. Answer the user's questions in a concise conversation of two or three sentences, using appropriate punctuation marks, without discussing punctuation-related topic content."
+        api_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        # api_key: "" # default=os.getenv("DASHSCOPE_API_KEY")
+
+      # === Avatar ===
+      LiteAvatar:
+        module: avatar/liteavatar/avatar_handler_liteavatar
+        avatar_name: 20250408/sample_data
+        fps: 25
+        debug: false
+        enable_fast_mode: false
+        use_gpu: true
