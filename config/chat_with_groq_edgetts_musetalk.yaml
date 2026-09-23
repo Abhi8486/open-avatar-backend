@@ -42,7 +42,7 @@ default:
       LLMOpenAICompatible:
         enabled: True
         module: llm/openai_compatible/llm_handler_openai_compatible
-        model_name: "llama3-8b-8192" # Fallback to the classic Llama3 model which has highest free-tier availability
+        model_name: "qwen/qwen3.8-27b" # Selected from the list of available models for this API key
         enable_video_input: False
         history_length: 20
         system_prompt: "Please act as an AI assistant. Answer the user's questions in a concise conversation of two or three sentences, using appropriate punctuation marks, without discussing punctuation-related topic content."
