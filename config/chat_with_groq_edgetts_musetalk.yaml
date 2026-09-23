@@ -53,6 +53,6 @@ default:
         batch_size: 2  # Batch processing frame count, must be greater than 2
         avatar_video_path: "assets/test_video.mp4"  # Initialization video path
         avatar_model_dir: "models/musetalk/avatar_model"  # Default avatar model directory
-        force_create_avatar: true  # Whether to force regenerate digital human data
+        force_create_avatar: false  # Automatically reuse existing avatar data if present
         debug: false  # Whether to enable debug mode
         multi_thread_inference: true  # Split UNet and VAE into separate threads for pipelined inference
