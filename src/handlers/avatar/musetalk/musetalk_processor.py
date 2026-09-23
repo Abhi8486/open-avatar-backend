@@ -275,6 +275,13 @@ class AvatarMuseTalkProcessor:
                 if len(segment) < target_len:
                     segment = np.pad(segment, (0, target_len - len(segment)), mode='constant')
 
+                # --- Prevent Whisper digital silence failures ---
+                # Whisper drops frames or fails entirely if fed absolute digital silence or 
+                # highly compressed zero-bitrate chunks. Injecting an inaudible dither
+                # guarantees a valid feature vector is always returned.
+                if np.max(np.abs(segment)) < 1e-4:
+                    segment = segment + (np.random.randn(*segment.shape) * 1e-4).astype(np.float32)
+
                 # --- Extract Whisper features (GPU, via _inference_lock) ---
                 t0 = time.time()
                 whisper_chunks = self._avatar.extract_whisper_feature(segment, self._algo_audio_sample_rate)

@@ -247,7 +247,7 @@ class HandlerAvatarMuseTalk(HandlerBase):
         self.avatar = MuseTalkAlgoV15(
             avatar_id=auto_avatar_id,
             video_path=handler_config.avatar_video_path,
-            bbox_shift=0,
+            bbox_shift=handler_config.bbox_shift,
             batch_size=handler_config.batch_size,
             force_preparation=handler_config.force_create_avatar,
             parsing_mode="jaw",

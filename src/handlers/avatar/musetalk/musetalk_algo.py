@@ -461,7 +461,9 @@ class MuseTalkAlgoV15:
 
         face_large1[y-y_s:y1-y_s, x-x_s:x1-x_s] = face
 
+        # Apply Gaussian Blur to feather the edges and remove the bounding box seam
         mask_f = mask_array.astype(np.float32) * (1.0 / 255.0)
+        mask_f = cv2.GaussianBlur(mask_f, (21, 21), 0)
         mask_f = mask_f[:, :, np.newaxis]  # (H, W, 1) — broadcasts to 3-ch
 
         if face_large1.shape[:2] != mask_f.shape[:2]:

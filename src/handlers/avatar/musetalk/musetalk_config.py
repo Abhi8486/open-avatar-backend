@@ -21,6 +21,7 @@ class AvatarMuseTalkConfig(HandlerBaseConfigModel, BaseModel):
     output_audio_sample_rate: int = Field(default=24000)
     model_dir: str = Field(default="models/musetalk")
     multi_thread_inference: bool = Field(default=True, description="Split UNet and VAE into separate threads for pipelined inference")
+    bbox_shift: int = Field(default=0, description="Face bounding box offset to tune the generated region boundary")
     # concurrent_limit is inherited from HandlerBaseConfigModel and auto-injected by ChatEngine from YAML config
 
     @field_validator("batch_size")
