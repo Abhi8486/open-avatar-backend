@@ -103,7 +103,9 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         logger.info("Received KeyboardInterrupt, exiting.")
+    except Exception as e:
+        logger.exception(f"Fatal error during execution: {e}")
+        sys.exit(1)
     finally:
         signal.signal(signal.SIGINT, signal.SIG_DFL)
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
-        os._exit(0)
