@@ -304,22 +304,6 @@ class HumanAudioVADContext(HandlerContext):
         self.audio_history.append((clip, timestamp))
         while 0 < self.history_length_limit < len(self.audio_history):
             self.audio_history.pop(0)
-
-    def update_status(self, speech_prob: float, clip: np.ndarray,
-                      timestamp: Optional[int]=None) -> Tuple[Optional[np.ndarray], Dict]:
-        self._append_to_history(clip, timestamp)
-        if speech_prob > self.config.speaking_threshold:
-            self.speech_length += self.clip_size
-            self.silence_length = 0
-            self.early_silence_length = 0  # Reset early silence counter when speech is present
-            # Reset early_vad_end count on speech, allowing next pause to trigger again
-            self.early_vad_end_count = 0
-            self.last_early_vad_end_at = 0
-        else:
-            self.silence_length += self.clip_size
-            self.early_silence_length += self.clip_size  # Accumulate early silence counter
-            self.speech_length = 0istory.pop(0)
-
     def update_status(self, speech_prob: float, clip: np.ndarray,
                       timestamp: Optional[int]=None) -> Tuple[Optional[np.ndarray], Dict]:
         self._append_to_history(clip, timestamp)
