@@ -22,7 +22,7 @@ services:
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
       # - UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
     command: >
-      --config=/root/open-avatar-chat/config/chat_with_openai_compatible_bailian_cosyvoice.yaml
+      --config=/root/open-avatar-chat/config/chat_with_groq_edgetts_musetalk.yaml
     volumes:
       - ./build:/root/open-avatar-chat/build
       - ./models:/root/open-avatar-chat/models

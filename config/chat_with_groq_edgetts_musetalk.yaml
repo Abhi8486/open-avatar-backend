@@ -8,7 +8,7 @@ default:
     cert_key: "ssl_certs/localhost.key"
   chat_engine:
     model_root: "models"
-    concurrent_limit: 2
+    concurrent_limit: 1
     handler_search_path:
       - "src/handlers"
     handler_configs:
@@ -16,10 +16,11 @@ default:
         module: client/rtc_client/client_handler_rtc
         # max time a session will last for
         connection_ttl: 900
+        output_video_fps: 24  # Must equal AvatarMusetalk.fps for correct A/V sync
         turn_config:
-          urls: ["turn:YOUR_TURN_SERVER_IP:3478"]
-          username: "YOUR_USERNAME"
-          credential: "YOUR_PASSWORD"
+          urls: ["turn:global.relay.metered.ca:80"]
+          username: "1f945dc7991a273faee374fb"
+          credential: "fAC5oiBtmC9Jrdu1"
       # === Interrupt Handler - Receives INTERRUPT signal and executes stream cancellation ===
       InterruptHandler:
         module: logic/interrupt/interrupt_handler
@@ -34,28 +35,25 @@ default:
         enabled: True
         module: asr/sensevoice/asr_handler_sensevoice
         model_name: "iic/SenseVoiceSmall"
-      CosyVoice:
+      EdgeTTS:
         enabled: True
-        module: tts/bailian_tts/tts_handler_cosyvoice_bailian
-        voice: "longxiaochun"
-        model_name: "cosyvoice-v1"
-        # api_key: "" # default=os.getenv("DASHSCOPE_API_KEY")
+        module: tts/edgetts/tts_handler_edgetts
+        voice: "en-US-AriaNeural" # Change voice as needed (e.g., zh-CN-XiaoxiaoNeural)
       LLMOpenAICompatible:
         enabled: True
         module: llm/openai_compatible/llm_handler_openai_compatible
-        model_name: "qwen-plus"
-        enable_video_input: False # ensure your llm support video input
+        model_name: "llama-3.1-8b-instant" # Put your preferred Groq model here
+        enable_video_input: False
         history_length: 20
-        # model_name: "gemini-2.0-flash"
         system_prompt: "Please act as an AI assistant. Answer the user's questions in a concise conversation of two or three sentences, using appropriate punctuation marks, without discussing punctuation-related topic content."
-        api_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
-        # api_url: 'http://127.0.0.1:11434/v1' # ollama
-        # api_url: 'https://generativelanguage.googleapis.com/v1beta/openai/'
-        # api_key: "" # default=os.getenv("DASHSCOPE_API_KEY")
-      LiteAvatar:
-        module: avatar/liteavatar/avatar_handler_liteavatar
-        avatar_name: 20250408/sample_data
-        fps: 25
-        debug: false
-        enable_fast_mode: false
-        use_gpu: true
+        api_url: "https://api.groq.com/openai/v1"
+        api_key: "YOUR_GROQ_API_KEY" # default=os.getenv("DASHSCOPE_API_KEY"), explicit key overrides it
+      AvatarMusetalk:
+        module: avatar/musetalk/avatar_handler_musetalk
+        fps: 24  # Video frame rate
+        batch_size: 2  # Batch processing frame count, must be greater than 2
+        avatar_video_path: "assets/test_video.mp4"  # Initialization video path
+        avatar_model_dir: "models/musetalk/avatar_model"  # Default avatar model directory
+        force_create_avatar: true  # Whether to force regenerate digital human data
+        debug: false  # Whether to enable debug mode
+        multi_thread_inference: true  # Split UNet and VAE into separate threads for pipelined inference
