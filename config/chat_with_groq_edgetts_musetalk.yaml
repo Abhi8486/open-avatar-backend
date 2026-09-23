@@ -50,7 +50,7 @@ default:
       AvatarMusetalk:
         module: avatar/musetalk/avatar_handler_musetalk
         fps: 24  # Video frame rate
-        batch_size: 2  # Batch processing frame count, must be greater than 2
+        batch_size: 8  # Increased from 2 to 8 to massively improve T4 GPU inference throughput and prevent idle frame stuttering
         avatar_video_path: "assets/test_video.mp4"  # Initialization video path
         avatar_model_dir: "models/musetalk/avatar_model"  # Default avatar model directory
         force_create_avatar: false  # Automatically reuse existing avatar data if present
