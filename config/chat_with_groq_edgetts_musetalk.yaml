@@ -38,7 +38,7 @@ default:
       EdgeTTS:
         enabled: True
         module: tts/edgetts/tts_handler_edgetts
-        voice: "en-US-AriaNeural" # Change voice as needed (e.g., zh-CN-XiaoxiaoNeural)
+        voice: "en-US-JennyNeural" # Change voice as needed (e.g., zh-CN-XiaoxiaoNeural)
       LLMOpenAICompatible:
         enabled: True
         module: llm/openai_compatible/llm_handler_openai_compatible
