@@ -423,7 +423,12 @@ class MuseTalkAlgoV15:
             # Save mask and related info
             cv2.imwrite(f"{self.mask_out_path}/{str(i).zfill(8)}.png", mask)
             self.mask_coords_list_cycle += [crop_box]
-            self.mask_list_cycle.append(mask)
+            
+            # Pre-blur the mask for faster blending at runtime
+            mask_f = mask.astype(np.float32) * (1.0 / 255.0)
+            mask_f = cv2.GaussianBlur(mask_f, (21, 21), 0)
+            mask_f = mask_f[:, :, np.newaxis]
+            self.mask_list_cycle.append(mask_f)
 
         # Step 7: Save all processed data
         # Save mask coordinates
@@ -461,10 +466,8 @@ class MuseTalkAlgoV15:
 
         face_large1[y-y_s:y1-y_s, x-x_s:x1-x_s] = face
 
-        # Apply Gaussian Blur to feather the edges and remove the bounding box seam
-        mask_f = mask_array.astype(np.float32) * (1.0 / 255.0)
-        mask_f = cv2.GaussianBlur(mask_f, (21, 21), 0)
-        mask_f = mask_f[:, :, np.newaxis]  # (H, W, 1) — broadcasts to 3-ch
+        # Use pre-blurred float32 mask
+        mask_f = mask_array
 
         if face_large1.shape[:2] != mask_f.shape[:2]:
             min_h = min(face_large1.shape[0], mask_f.shape[0])
