@@ -110,7 +110,7 @@ class HandlerTTS(HandlerBase, ABC):
             text = re.sub(r"<\|.*?\|>", "", text)
             context.input_text += self.filter_text(text)
 
-        text_end = inputs.data.get_meta("avatar_text_end", False)
+        text_end = inputs.data.get_meta("avatar_text_end", False) or inputs.is_last_data
         if not text_end:
             sentences = re.split(r'(?<=[,.~!?，。！？])', context.input_text)
             if len(sentences) > 1:  # At least one complete sentence
