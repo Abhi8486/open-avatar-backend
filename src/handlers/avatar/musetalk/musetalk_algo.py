@@ -466,8 +466,13 @@ class MuseTalkAlgoV15:
 
         face_large1[y-y_s:y1-y_s, x-x_s:x1-x_s] = face
 
-        # Use pre-blurred float32 mask
-        mask_f = mask_array
+        # Handle both pre-blurred float32 (H,W,1) masks and legacy uint8 (H,W) masks
+        if mask_array.dtype == np.float32 and mask_array.ndim == 3:
+            mask_f = mask_array
+        else:
+            mask_f = mask_array.astype(np.float32) * (1.0 / 255.0)
+            mask_f = cv2.GaussianBlur(mask_f, (21, 21), 0)
+            mask_f = mask_f[:, :, np.newaxis]
 
         if face_large1.shape[:2] != mask_f.shape[:2]:
             min_h = min(face_large1.shape[0], mask_f.shape[0])
