@@ -30,8 +30,8 @@ class MuseTalkSpeechAudio(BaseModel):
 @dataclass
 class MuseTalkProcessorCallbacks:
     """Callback interface injected into Processor by Context at creation time."""
-    on_video_frame: Optional[Callable[[np.ndarray], None]] = None
-    on_audio_frame: Optional[Callable[[np.ndarray], None]] = None
+    on_video_frame: Optional[Callable[[np.ndarray, bool], None]] = None
+    on_audio_frame: Optional[Callable[[np.ndarray, bool], None]] = None
     on_speech_end: Optional[Callable[[str], None]] = None
 
 

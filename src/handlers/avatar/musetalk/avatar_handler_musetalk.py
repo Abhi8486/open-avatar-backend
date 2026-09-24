@@ -99,11 +99,11 @@ class AvatarMuseTalkContext(HandlerContext):
 
     def _build_callbacks(self) -> MuseTalkProcessorCallbacks:
         """Build callbacks that bridge Processor output to engine's submit_data."""
-        def on_video_frame(frame: np.ndarray):
-            self._return_data(frame, ChatDataType.AVATAR_VIDEO)
+        def on_video_frame(frame: np.ndarray, is_idle: bool = False):
+            self._return_data(frame, ChatDataType.AVATAR_VIDEO, is_idle)
 
-        def on_audio_frame(audio_data: np.ndarray):
-            self._return_data(audio_data, ChatDataType.AVATAR_AUDIO)
+        def on_audio_frame(audio_data: np.ndarray, is_idle: bool = False):
+            self._return_data(audio_data, ChatDataType.AVATAR_AUDIO, is_idle)
 
         def on_speech_end(speech_id: str):
             streamer = self.get_playback_streamer()
@@ -127,12 +127,20 @@ class AvatarMuseTalkContext(HandlerContext):
             on_speech_end=on_speech_end,
         )
 
-    def _return_data(self, data: np.ndarray, chat_data_type: ChatDataType) -> None:
+    def _return_data(self, data: np.ndarray, chat_data_type: ChatDataType, is_idle: bool = False) -> None:
         """Package and submit output data for downstream consumption."""
         definition = self.output_data_definitions.get(chat_data_type)
         if definition is None:
             logger.error(f"Definition is None, chat_data_type={chat_data_type}")
             return
+            
+        streamer = self.get_playback_streamer()
+        if streamer is not None and streamer.current_stream is None:
+            source_streams = [value.stream_id for value in streamer._input_stream_ids.values()]
+            stream_name = "idle" if is_idle else "speech"
+            cancelable = not is_idle
+            streamer.new_stream(source_streams, name=stream_name, config=ChatStreamConfig(cancelable=cancelable))
+            
         data_bundle = DataBundle(definition)
         if chat_data_type.channel_type == EngineChannelType.AUDIO:
             if data is not None:

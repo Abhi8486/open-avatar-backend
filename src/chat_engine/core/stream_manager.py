@@ -339,12 +339,13 @@ class ChatStream:
         self.status = ChatStreamStatus.ENDED
         ref_by_list = [str(sid) for sid in self.ref_by.values()]
         stream_debug.log_finish(self, prev_status, ref_by_list)
-        stream_end_signal = ChatSignal(
-            type=ChatSignalType.STREAM_END,
-            source_type=self.config.source_type,
-            related_stream=self.identity,
-        )
-        self._signal_emitter.emit(stream_end_signal)
+        if self.identity.name != "idle":
+            stream_end_signal = ChatSignal(
+                type=ChatSignalType.STREAM_END,
+                source_type=self.config.source_type,
+                related_stream=self.identity,
+            )
+            self._signal_emitter.emit(stream_end_signal)
         storage.check_stream_status(self)
         if self.remove_callback is not None:
             self.remove_callback(self)
@@ -735,12 +736,13 @@ class ChatStreamer:
         stream.start_time = timestamp
         stream.status = ChatStreamStatus.STARTED
         stream_debug.log_start(stream, timestamp)
-        stream_begin_signal = ChatSignal(
-            type=ChatSignalType.STREAM_BEGIN,
-            source_type=stream.config.source_type,
-            related_stream=stream.identity,
-        )
-        self._signal_emitter.emit(stream_begin_signal)
+        if stream.identity.name != "idle":
+            stream_begin_signal = ChatSignal(
+                type=ChatSignalType.STREAM_BEGIN,
+                source_type=stream.config.source_type,
+                related_stream=stream.identity,
+            )
+            self._signal_emitter.emit(stream_begin_signal)
         return stream_id
 
     def _packet_chat_data(self, data: StreamableData):
@@ -812,12 +814,13 @@ class ChatStreamer:
             stream.status = ChatStreamStatus.STARTED
             chat_data.is_first_data = True
             stream_debug.log_start(stream, chat_data.timestamp)
-            stream_begin_signal = ChatSignal(
-                type=ChatSignalType.STREAM_BEGIN,
-                source_type=stream.config.source_type,
-                related_stream=stream.identity,
-            )
-            self._signal_emitter.emit(stream_begin_signal)
+            if stream.identity.name != "idle":
+                stream_begin_signal = ChatSignal(
+                    type=ChatSignalType.STREAM_BEGIN,
+                    source_type=stream.config.source_type,
+                    related_stream=stream.identity,
+                )
+                self._signal_emitter.emit(stream_begin_signal)
         # Production-side cancel guard: check status right before distribution
         # to minimize the TOCTOU window. GIL ensures atomic status read, and the
         # consumer-side guard in _pumper_func catches anything that slips through.

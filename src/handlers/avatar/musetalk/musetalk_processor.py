@@ -686,9 +686,9 @@ class AvatarMuseTalkProcessor:
             # --- Output callbacks: video (every frame), audio (every frame: real or silence), speech_end ---
             # audio_segment is always [1, N] float32 here: speaking frames are
             # normalized in _compose_worker; idle frames carry self._silence_chunk.
-            self._notify_video(frame)
+            self._notify_video(frame, is_idle=is_idle)
             self._last_emitted_frame = frame
-            self._notify_audio(audio_segment)
+            self._notify_audio(audio_segment, is_idle=is_idle)
             if end_of_speech:
                 logger.info(f"Status change: SPEAKING -> LISTENING, speech_id={speech_id}")
                 self._notify_speech_end(speech_id)
@@ -708,17 +708,17 @@ class AvatarMuseTalkProcessor:
 
     # --- Callback dispatchers (called from worker threads) ---
 
-    def _notify_audio(self, audio_data: np.ndarray):
+    def _notify_audio(self, audio_data: np.ndarray, is_idle: bool = False):
         if self._callbacks and self._callbacks.on_audio_frame:
             try:
-                self._callbacks.on_audio_frame(audio_data)
+                self._callbacks.on_audio_frame(audio_data, is_idle)
             except Exception as e:
                 logger.opt(exception=True).error(f"Exception in _notify_audio: {e}")
 
-    def _notify_video(self, frame: np.ndarray):
+    def _notify_video(self, frame: np.ndarray, is_idle: bool = False):
         if self._callbacks and self._callbacks.on_video_frame:
             try:
-                self._callbacks.on_video_frame(frame)
+                self._callbacks.on_video_frame(frame, is_idle)
             except Exception as e:
                 logger.opt(exception=True).error(f"Exception in _notify_video: {e}")
 
