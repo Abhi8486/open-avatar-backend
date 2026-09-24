@@ -439,6 +439,7 @@ class AvatarMuseTalkProcessor:
             logger.info(f"[THREAD_WARMUP] _frame_generator_unet_worker thread id: {threading.get_ident()} warmup done, time: {(t1-t0)*1000:.1f} ms")
 
         while not self._stop_event.is_set():
+            time.sleep(0.002)
             # --- Collect batch (blocks until batch_size chunks or end_of_speech) ---
             result = self._collect_batch()
             if result is None:
@@ -486,6 +487,7 @@ class AvatarMuseTalkProcessor:
             logger.info(f"[THREAD_WARMUP] _frame_generator_vae_worker thread id: {threading.get_ident()} warmup done, time: {(t1-t0)*1000:.1f} ms")
 
         while not self._stop_event.is_set():
+            time.sleep(0.002)
             if self._interrupted.is_set():
                 time.sleep(0.01)
                 continue
@@ -574,6 +576,7 @@ class AvatarMuseTalkProcessor:
     def _compose_worker(self):
         """Compose face crop onto full frame (CPU, no _inference_lock): _compose_queue -> _output_queue."""
         while not self._stop_event.is_set():
+            time.sleep(0.002)
             try:
                 item: ComposeQueueItem = self._compose_queue.get(timeout=0.1)
                 if self._interrupted.is_set():
