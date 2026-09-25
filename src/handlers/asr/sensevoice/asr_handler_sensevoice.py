@@ -107,7 +107,6 @@ class HandlerASR(HandlerBase, ABC):
         output_definition = output_definitions.get(ChatDataType.HUMAN_TEXT).definition
         context = cast(ASRContext, context)
         if inputs.type == ChatDataType.HUMAN_AUDIO:
-            logger.info("DEBUG - SPOT 3: SenseVoice ASR received audio chunk from VAD")
             audio = inputs.data.get_main_data()
         else:
             return
@@ -139,7 +138,6 @@ class HandlerASR(HandlerBase, ABC):
             context.audio_dump_file.write(output_audio.tobytes())
 
         res = self.model.generate(input=output_audio, batch_size_s=10)
-        logger.info(f"DEBUG - SPOT 4: SenseVoice ASR generated transcription: {res}")
         logger.info(res)
         context.output_audios.clear()
         output_text = re.sub(r"<\|.*?\|>", "", res[0]['text'])
