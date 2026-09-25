@@ -293,6 +293,7 @@ class RtcClientSessionDelegate(ClientSessionDelegate):
         data_bundle = DataBundle(definition)
         is_last_data = False
         if modality == EngineChannelType.AUDIO:
+            logger.info("DEBUG - SPOT 1: RTC Client received MIC_AUDIO frame from browser")
             data_bundle.set_main_data(data.squeeze()[np.newaxis, ...])
         elif modality == EngineChannelType.VIDEO:
             data_bundle.set_main_data(data[np.newaxis, ...])

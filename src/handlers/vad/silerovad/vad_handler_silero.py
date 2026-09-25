@@ -435,6 +435,9 @@ class HandlerAudioVAD(HandlerBase, ABC):
         if inputs.type != ChatDataType.MIC_AUDIO:
             return
 
+        # VAD receives continuous frames from RTC
+        logger.info("DEBUG - SPOT 2: Silero VAD handler receiving audio frame")
+
         audio = inputs.data.get_main_data()
         if audio is None:
             return
@@ -523,6 +526,7 @@ class HandlerAudioVAD(HandlerBase, ABC):
                 if extra_args.get("early_vad_end", False):
                     output.add_event_by_type(EventType.EVT_EARLY_VAD_END)
 
+                logger.info(f"DEBUG - SPOT 2.5: Silero VAD triggered, sending chunk to ASR. speech_end={extra_args.get('human_speech_end', False)}")
                 output_chat_data = ChatData(
                     type=ChatDataType.HUMAN_AUDIO,
                     data=output
