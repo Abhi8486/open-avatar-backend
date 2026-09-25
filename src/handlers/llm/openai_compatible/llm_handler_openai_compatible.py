@@ -150,15 +150,42 @@ class HandlerLLM(HandlerBase, ABC):
         logger.info(f'llm input {context.model_name} {chat_text} ')
         current_content = context.history.generate_next_messages(chat_text, 
                                                                  [context.current_image] if context.current_image is not None else [])
+                                                                 
+        # --- Milestone D: Orchestrator Integration (RAG) ---
+        messages_to_send = [context.system_prompt] + current_content
+        try:
+            from handlers.llm.openai_compatible.rag_hybrid import hybrid_rrf_search
+            import time
+            
+            emb_start = time.time()
+            emb_res = context.client.embeddings.create(
+                input=chat_text, model="text-embedding-3-small"
+            )
+            query_emb = emb_res.data[0].embedding
+            emb_elapsed = (time.time() - emb_start) * 1000
+            logger.info(f"OpenAI Embedding API took {emb_elapsed:.2f}ms")
+            
+            # Note: Using 'default' tenant_id for demonstration
+            retrieved_chunks = hybrid_rrf_search("default", chat_text, query_emb)
+            if retrieved_chunks:
+                rag_context = "\n\n--- RELEVANT COURSE MATERIAL ---\n" + "\n\n".join(retrieved_chunks)
+                
+                # Inject RAG context into a temporary system prompt to bypass the aggressive 
+                # chat_history_manager filter_text() which drops newlines and dashes.
+                sys_prompt = dict(context.system_prompt)
+                sys_prompt['content'] += f"\n\nStudent Question Context:\n{rag_context}"
+                messages_to_send = [sys_prompt] + current_content
+        except Exception as e:
+            logger.error(f"Hybrid RAG search failed: {e}")
+        # ---------------------------------------------------
+
         logger.debug(f'llm input {context.model_name} {current_content} ')
         if stream_key:
             context.active_stream_keys.add(stream_key)
         try:
             completion = context.client.chat.completions.create(
                 model=context.model_name,
-                messages=[
-                    context.system_prompt,
-                ] + current_content,
+                messages=messages_to_send,
                 max_tokens=context.max_tokens,
                 stream=True,
                 stream_options={"include_usage": True}
