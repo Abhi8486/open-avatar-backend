@@ -19,8 +19,8 @@ default:
         output_video_fps: 12  # Must equal AvatarMusetalk.fps for correct A/V sync
         turn_config:
           urls: ["turn:global.relay.metered.ca:80"]
-          username: "1f945dc7991a273faee374fb"
-          credential: "fAC5oiBtmC9Jrdu1"
+          username: "8aa37256336b81d19b1b6de6"
+          credential: "A9Chbapp7I3ExRaA"
       # === Interrupt Handler - Receives INTERRUPT signal and executes stream cancellation ===
       InterruptHandler:
         module: logic/interrupt/interrupt_handler
