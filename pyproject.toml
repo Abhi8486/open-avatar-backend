@@ -45,6 +45,7 @@ dependencies = [
     "psycopg2-binary>=2.9.10",
     "sentence-transformers>=3.0.0",
     "pypdf>=5.0.0",
+    "tf-keras>=2.16.0",
 ]
 
 [tool.uv.workspace]
