@@ -173,7 +173,12 @@ class HandlerLLM(HandlerBase, ABC):
                 # Inject RAG context into a temporary system prompt to bypass the aggressive 
                 # chat_history_manager filter_text() which drops newlines and dashes.
                 sys_prompt = dict(context.system_prompt)
-                sys_prompt['content'] += f"\n\nStudent Question Context:\n{rag_context}"
+                sys_prompt['content'] += f"\n\nStudent Question Context:\n{rag_context}\n\nStrict Instruction: Answer the student based ONLY on the course material above."
+                messages_to_send = [sys_prompt] + current_content
+            else:
+                # No knowledge found -> Force the AI to reject the question
+                sys_prompt = dict(context.system_prompt)
+                sys_prompt['content'] = "You are an AI Tutor. The student asked a question, but no relevant information was found in the curriculum database. You MUST reply with a variation of: 'I am sorry, but that topic is not in the book and is outside of our current curriculum.'"
                 messages_to_send = [sys_prompt] + current_content
         except Exception as e:
             logger.error(f"Hybrid RAG search failed: {e}")

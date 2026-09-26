@@ -91,6 +91,35 @@ def ingest_document(tenant_id: str, course_id: str, text: str, api_key: str):
     finally:
         p.putconn(conn)
 
+def ingest_file(tenant_id: str, course_id: str, file_path: str, api_key: str):
+    """
+    Helper function to automatically read and ingest either a .txt or .pdf file.
+    """
+    if not os.path.exists(file_path):
+        logger.error(f"File not found: {file_path}")
+        return
+
+    text = ""
+    if file_path.lower().endswith(".pdf"):
+        try:
+            import pypdf
+            with open(file_path, "rb") as f:
+                reader = pypdf.PdfReader(f)
+                for page in reader.pages:
+                    text += page.extract_text() + "\n"
+        except ImportError:
+            logger.error("pypdf is not installed. Run: pip install pypdf")
+            return
+        except Exception as e:
+            logger.error(f"Failed to read PDF: {e}")
+            return
+    else:
+        # Fallback to standard text reading
+        with open(file_path, "r", encoding="utf-8") as f:
+            text = f.read()
+
+    ingest_document(tenant_id, course_id, text, api_key)
+
 def hybrid_rrf_search(tenant_id: str, query: str, query_embedding: list, limit: int = 3) -> list:
     """
     Milestone C: The Hybrid RRF Query Function
