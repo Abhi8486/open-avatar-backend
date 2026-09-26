@@ -156,14 +156,14 @@ class HandlerLLM(HandlerBase, ABC):
         try:
             from handlers.llm.openai_compatible.rag_hybrid import hybrid_rrf_search
             import time
+            from sentence_transformers import SentenceTransformer
             
             emb_start = time.time()
-            emb_res = context.client.embeddings.create(
-                input=chat_text, model="text-embedding-3-small"
-            )
-            query_emb = emb_res.data[0].embedding
+            embedder = SentenceTransformer('all-MiniLM-L6-v2')
+            query_emb = embedder.encode([chat_text])[0].tolist()
+            
             emb_elapsed = (time.time() - emb_start) * 1000
-            logger.info(f"OpenAI Embedding API took {emb_elapsed:.2f}ms")
+            logger.info(f"Local Embedding Model took {emb_elapsed:.2f}ms")
             
             # Note: Using 'default' tenant_id for demonstration
             retrieved_chunks = hybrid_rrf_search("default", chat_text, query_emb)

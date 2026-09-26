@@ -37,7 +37,7 @@ def setup_database():
                     tenant_id TEXT NOT NULL,
                     course_id TEXT NOT NULL,
                     content TEXT NOT NULL,
-                    embedding vector(1536) NOT NULL,
+                    embedding vector(384) NOT NULL,
                     fts_vector tsvector GENERATED ALWAYS AS (to_tsvector('english', content)) STORED
                 );
             """)
@@ -66,16 +66,16 @@ def ingest_document(tenant_id: str, course_id: str, text: str, api_key: str):
     Milestone B: Knowledge Base Ingestion Pipeline
     Chunks text, gets embeddings, and bulk inserts into PostgreSQL.
     """
-    client = OpenAI(api_key=api_key)
     chunks = chunk_text(text)
     if not chunks:
         return
         
     logger.info(f"Ingesting document for tenant {tenant_id}, {len(chunks)} chunks.")
     
-    # Batch generate embeddings
-    emb_res = client.embeddings.create(input=chunks, model="text-embedding-3-small")
-    embeddings = [d.embedding for d in emb_res.data]
+    # Generate local embeddings using HuggingFace
+    from sentence_transformers import SentenceTransformer
+    model = SentenceTransformer('all-MiniLM-L6-v2')
+    embeddings = model.encode(chunks).tolist()
     
     p = get_db_pool()
     if not p: return
