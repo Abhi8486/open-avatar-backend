@@ -21,6 +21,8 @@ from handlers.llm.openai_compatible.chat_history_manager import ChatHistory, His
 from chat_engine.data_models.chat_stream_config import ChatStreamConfig
 
 
+_embedder = None
+
 class LLMConfig(HandlerBaseConfigModel, BaseModel):
     model_name: str = Field(default="qwen-plus")
     system_prompt: str = Field(default="You are an AI assistant. Please answer user questions with brief dialogue and include appropriate punctuation marks.")
@@ -86,6 +88,12 @@ class HandlerLLM(HandlerBase, ABC):
         )
 
     def load(self, engine_config: ChatEngineConfigModel, handler_config: Optional[BaseModel] = None):
+        global _embedder
+        if _embedder is None:
+            from sentence_transformers import SentenceTransformer
+            logger.info("Warming up SentenceTransformer for Hybrid RAG...")
+            _embedder = SentenceTransformer('all-MiniLM-L6-v2')
+
         if isinstance(handler_config, LLMConfig):
             if handler_config.api_key is None or len(handler_config.api_key) == 0:
                 error_message = 'api_key is required in config/xxx.yaml, when use handler_llm'
@@ -156,11 +164,13 @@ class HandlerLLM(HandlerBase, ABC):
         try:
             from handlers.llm.openai_compatible.rag_hybrid import hybrid_rrf_search
             import time
-            from sentence_transformers import SentenceTransformer
+            global _embedder
             
             emb_start = time.time()
-            embedder = SentenceTransformer('all-MiniLM-L6-v2')
-            query_emb = embedder.encode([chat_text])[0].tolist()
+            if _embedder is None:
+                from sentence_transformers import SentenceTransformer
+                _embedder = SentenceTransformer('all-MiniLM-L6-v2')
+            query_emb = _embedder.encode([chat_text])[0].tolist()
             
             emb_elapsed = (time.time() - emb_start) * 1000
             logger.info(f"Local Embedding Model took {emb_elapsed:.2f}ms")
