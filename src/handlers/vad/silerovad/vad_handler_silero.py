@@ -459,6 +459,9 @@ class HandlerAudioVAD(HandlerBase, ABC):
 
         if audio.dtype != np.float32:
             audio = audio.astype(np.float32) / 32767
+            
+        # Global boost for quiet microphones
+        audio = np.clip(audio * 15.0, -1.0, 1.0)
 
         context.slice_context.update_start_id(timestamp[0], force_update=False)
 
@@ -469,7 +472,9 @@ class HandlerAudioVAD(HandlerBase, ABC):
             if db > context.peak_volume:
                 context.peak_volume = db
             head_sample_id = context.slice_context.get_last_slice_start_index()
+            
             speech_prob = self._inference(context, clip)
+            
             if (context.speaking_status in (SpeakingStatus.END, SpeakingStatus.POST_END)
                 and db < context.config.volume_threshold):
                 speech_prob = 0.0
