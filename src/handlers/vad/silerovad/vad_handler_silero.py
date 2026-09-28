@@ -32,7 +32,7 @@ class SileroVADConfigModel(HandlerBaseConfigModel, BaseModel):
     buffer_look_back: int = Field(default=1024)
     prestart_fallback_threshold: int = Field(default=512)
     speech_padding: int = Field(default=512)
-    volume_threshold: float = Field(default=-40)
+    volume_threshold: float = Field(default=-100)
     # Reconnection configuration
     post_end_monitor_samples: int = Field(default=16000, description="POST_END monitoring period length (in samples), 16000 = 1 sec")
     reconnect_threshold_samples: int = Field(default=8000, description="Reconnection threshold (in samples); values smaller than this are considered false triggers")
@@ -465,8 +465,7 @@ class HandlerAudioVAD(HandlerBase, ABC):
             if (context.speaking_status in (SpeakingStatus.END, SpeakingStatus.POST_END)
                 and db < context.config.volume_threshold):
                 speech_prob = 0.0
-            # logger.info(f"RMS: {rms}, CurrentDB: {db} dB, PeakVolume: {context.peak_volume} dB, "
-            #             f"VAD prob {speech_prob:.2f}: {'='*int(speech_prob * 20)}")
+            
             if context.peak_volume > -100:
                 context.peak_volume -= 1.0
             audio_clip, extra_args = context.update_status(speech_prob, clip, timestamp=head_sample_id)
