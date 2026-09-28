@@ -333,6 +333,15 @@ class RtcStream(AsyncAudioVideoStreamHandler):
                 # channel.send(json.dumps({"type": "chat", "unique_id": unique_id, "message": message}))
           
     async def on_chat_datachannel(self, message: Dict, channel):
+        # Respond to heartbeat Ping to keep TURN server and SCTP connection alive
+        if message.get("header", {}).get("name") == "Ping":
+            try:
+                channel.send(json.dumps({
+                    "header": {"name": "Pong", "request_id": message.get("header", {}).get("request_id")},
+                    "payload": {}
+                }))
+            except Exception as e:
+                logger.debug(f"Failed to send Pong: {e}")
         # {"type":"chat",id:"Identifier for text belonging to the same utterance", "message":"Hello, world!"}
         # unique_id = uuid.uuid4().hex
         pass
