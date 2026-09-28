@@ -572,7 +572,7 @@ class ChatStreamer:
         self._default_config: ChatStreamConfig = ChatStreamConfig() if config is None else config
         # Keep ended upstream streams for a short grace period so downstream
         # outputs (e.g., HUMAN_TEXT) can still reference them for ref_streams.
-        self._ended_input_retention = 3.0  # seconds
+        self._ended_input_retention = 15.0  # seconds
 
     @property
     def data_type(self):
@@ -796,6 +796,10 @@ class ChatStreamer:
                 self.new_stream(source_streams)
         stream = self.current_stream
         if stream is None:
+            # If the stream was created but immediately cancelled (e.g. upstream source expired)
+            # just drop the data cleanly instead of crashing the handler thread.
+            if self._current_stream.stream is not None and self._current_stream.stream.status == ChatStreamStatus.CANCELLED:
+                return
             raise ValueError("No current stream")
         if stream_meta is not None:
             stream.update_metadata(stream_meta)
