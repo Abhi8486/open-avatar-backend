@@ -226,12 +226,18 @@ class RtcStream(AsyncAudioVideoStreamHandler):
         timestamp = self.client_session_delegate.get_timestamp()
         if timestamp[0] / timestamp[1] < self.stream_start_delay:
             return
-        _, array = frame
+        sample_rate, array = frame
+        
+        # Log periodically (e.g. 1 in 100 frames) or just log the first one to avoid spam
+        if not hasattr(self, '_logged_first_audio'):
+            logger.warning(f"FIRST AUDIO RECEIVED: sample_rate={sample_rate}, array shape={array.shape}, dtype={array.dtype}, using input_sample_rate={self.input_sample_rate}")
+            self._logged_first_audio = True
+
         self.client_session_delegate.put_data(
             EngineChannelType.AUDIO,
             array,
             timestamp,
-            self.input_sample_rate,
+            sample_rate,  # Use actual sample rate instead of hardcoded self.input_sample_rate!
         )
 
     async def video_receive(self, frame):
