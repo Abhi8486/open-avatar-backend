@@ -24,7 +24,7 @@ from engine_utils.general_slicer import SliceContext, slice_data
 
 
 class SileroVADConfigModel(HandlerBaseConfigModel, BaseModel):
-    speaking_threshold: float = Field(default=0.5)
+    speaking_threshold: float = Field(default=0.1)
     start_delay: int = Field(default=2048)
     end_delay: int = Field(default=5000)
     early_end_delay: int = Field(default=1500, description="Early end detection threshold (in samples), used to trigger first early_vad_end event")
@@ -38,7 +38,7 @@ class SileroVADConfigModel(HandlerBaseConfigModel, BaseModel):
     reconnect_threshold_samples: int = Field(default=8000, description="Reconnection threshold (in samples); values smaller than this are considered false triggers")
     # POST_END energy threshold (dB), fallback detection alongside VAD model
     # When audio energy exceeds this threshold, voice activity is recognized even if VAD model misses it
-    post_end_energy_threshold: float = Field(default=-35, description="POST_END energy detection threshold (dB); above this value is considered voice activity")
+    post_end_energy_threshold: float = Field(default=-100.0, description="POST_END energy detection threshold (dB); above this value is considered voice activity")
 
 
 class SpeakingStatus(enum.Enum):
@@ -376,6 +376,7 @@ class HandlerAudioVAD(HandlerBase, ABC):
             n_mels=80,
             n_fft=1024,
             hop_length=256,
+            noise_gate_db=-100.0
         )
         context.reset_model()
         return context
@@ -473,6 +474,11 @@ class HandlerAudioVAD(HandlerBase, ABC):
                 and db < context.config.volume_threshold):
                 speech_prob = 0.0
             
+            if not hasattr(context, '_prob_log_counter'): context._prob_log_counter = 0
+            if context._prob_log_counter < 20 and db > -40.0:
+                logger.warning(f"VAD DETECT: prob={speech_prob:.3f}, db={db:.2f}")
+                context._prob_log_counter += 1
+
             if context.peak_volume > -100:
                 context.peak_volume -= 1.0
             audio_clip, extra_args = context.update_status(speech_prob, clip, timestamp=head_sample_id)
