@@ -442,6 +442,13 @@ class HandlerAudioVAD(HandlerBase, ABC):
         sample_rate = audio_entry.sample_rate
         audio = audio.squeeze()
 
+        if not hasattr(context, '_logged_silence_check'):
+            context._logged_silence_check = 0
+        if context._logged_silence_check < 5:
+            max_val = float(np.max(np.abs(audio)))
+            logger.warning(f"VAD AUDIO CHECK #{context._logged_silence_check}: max amplitude = {max_val:.4f}")
+            context._logged_silence_check += 1
+
         if context.agc is not None:
             context.agc.update_gain(audio)
 
