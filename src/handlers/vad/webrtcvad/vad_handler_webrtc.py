@@ -107,7 +107,10 @@ class HandlerAudioVAD(HandlerBase):
             frame = context.audio_buffer[:context.frame_length]
             context.audio_buffer = context.audio_buffer[context.frame_length:]
             
-            is_speech = context.vad.is_speech(frame.tobytes(), context.sample_rate)
+            # Push-To-Talk Mode: The frontend mutes the mic (sending absolute silence) when the button is not held.
+            # So ANY non-zero amplitude means the button is currently held down!
+            max_amp = np.max(np.abs(frame))
+            is_speech = max_amp > 0
             
             if not hasattr(context, "debug_frame_count"):
                 context.debug_frame_count = 0
@@ -132,10 +135,10 @@ class HandlerAudioVAD(HandlerBase):
                 context.ring_buffer.append((frame, is_speech))
                 num_unvoiced = len([f for f, speech in context.ring_buffer if not speech])
                 
-                # If >50% of ring buffer is silence, untrigger!
+                # If >50% of ring buffer is silence (zeros), the user released the button!
                 if num_unvoiced > 0.5 * context.ring_buffer.maxlen:
                     context.triggered = False
-                    logger.info("WebRTCVAD: End of speech detected!")
+                    logger.info("PTT: Button release detected! Sending all recorded audio to ASR...")
                     
                     # Send collected audio
                     complete_audio = np.concatenate(context.voiced_frames)
