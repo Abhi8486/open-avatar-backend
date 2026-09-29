@@ -120,8 +120,7 @@ class HandlerAudioVAD(HandlerBase):
                 context.ring_buffer.append((frame, is_speech))
                 num_voiced = len([f for f, speech in context.ring_buffer if speech])
                 
-                # If >90% of the ring buffer is speech, trigger!
-                if num_voiced > 0.9 * context.ring_buffer.maxlen:
+                if num_voiced > 0.3 * context.ring_buffer.maxlen:
                     context.triggered = True
                     logger.info("WebRTCVAD: Start of speech detected!")
                     # Yield all buffered frames first
@@ -133,8 +132,8 @@ class HandlerAudioVAD(HandlerBase):
                 context.ring_buffer.append((frame, is_speech))
                 num_unvoiced = len([f for f, speech in context.ring_buffer if not speech])
                 
-                # If >90% of ring buffer is silence, untrigger!
-                if num_unvoiced > 0.9 * context.ring_buffer.maxlen:
+                # If >50% of ring buffer is silence, untrigger!
+                if num_unvoiced > 0.5 * context.ring_buffer.maxlen:
                     context.triggered = False
                     logger.info("WebRTCVAD: End of speech detected!")
                     
