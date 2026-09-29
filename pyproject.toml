@@ -46,6 +46,7 @@ dependencies = [
     "sentence-transformers>=3.0.0",
     "pypdf>=5.0.0",
     "tf-keras>=2.16.0",
+    "webrtcvad>=2.0.10",
 ]
 
 [tool.uv.workspace]
