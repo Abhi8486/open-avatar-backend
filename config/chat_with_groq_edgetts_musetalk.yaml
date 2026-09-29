@@ -27,7 +27,7 @@ default:
       SileroVad:
         module: vad/silerovad/vad_handler_silero
         speaking_threshold: 0.0005
-        volume_threshold: -20
+        volume_threshold: -27
         start_delay: 2048
         end_delay: 16000
         buffer_look_back: 5000
