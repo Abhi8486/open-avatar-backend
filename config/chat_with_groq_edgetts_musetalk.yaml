@@ -16,6 +16,8 @@ default:
         module: client/rtc_client/client_handler_rtc
         # max time a session will last for
         connection_ttl: 900
+        concurrent_limit: 5
+
         output_video_fps: 12  # Must equal AvatarMusetalk.fps for correct A/V sync
         turn_config:
           urls: 

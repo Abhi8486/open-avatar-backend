@@ -110,6 +110,12 @@ class HandlerASRSarvam(HandlerBase, ABC):
         output_audio = np.concatenate(context.output_audios)
         context.output_audios.clear()
 
+        # Sarvam STT rejects audio > 30s. Truncate to the last 30 seconds if exceeded.
+        max_samples = 30 * 16000
+        if output_audio.shape[0] > max_samples:
+            logger.warning(f"Audio chunk too long ({output_audio.shape[0]/16000:.1f}s). Truncating to last 30s.")
+            output_audio = output_audio[-max_samples:]
+
         # Convert to wav bytes
         wav_io = io.BytesIO()
         wavfile.write(wav_io, 16000, output_audio.astype(np.int16))

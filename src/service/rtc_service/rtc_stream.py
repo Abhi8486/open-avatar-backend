@@ -78,6 +78,8 @@ class RtcStream(AsyncAudioVideoStreamHandler):
 
         self.streams: Dict[str, RtcStream] = {}
         self.owns_session = False
+        
+        self.last_ping_time = time.time()
 
 
     # copy is used as create_instance in fastrtc
@@ -122,15 +124,13 @@ class RtcStream(AsyncAudioVideoStreamHandler):
         selected_encoder, _ = _get_h264_encoder_info()
         logger.debug(f"[{session_id}] H.264 encoder: {selected_encoder}")
 
-        if session_id in factory.streams:
-            existing = factory.streams.get(session_id)
-            # Cleanup stale entries left by interrupted connections.
-            if existing is None or existing.client_session_delegate is None or existing.quit.is_set():
-                factory.streams.pop(session_id, None)
-            else:
-                base_session_id = session_id
-                session_id = f"{base_session_id}-{uuid.uuid4().hex[:8]}"
-                logger.warning(f"Session id conflict for {base_session_id}, fallback to {session_id}")
+        # Aggressively kill ALL existing sessions to ensure this new connection succeeds,
+        # since we only support 1 concurrent user and AvatarMuseTalk throws if >1 session exists.
+        for existing_id, existing_stream in list(factory.streams.items()):
+            if not existing_stream.quit.is_set():
+                logger.warning(f"Aggressively closing existing session {existing_id} for new connection {session_id}")
+                existing_stream.shutdown()
+            factory.streams.pop(existing_id, None)
 
         self.session_id = session_id
         existing_delegate = factory.client_handler_delegate.find_session_delegate(session_id)
@@ -197,9 +197,15 @@ class RtcStream(AsyncAudioVideoStreamHandler):
             self.emit_counter.add_property("video_emit")
             
             while not self.quit.is_set():
+                if time.time() - self.last_ping_time > 15.0:
+                    logger.warning(f"[{self.session_id}] Connection timed out due to missing Ping (15s)")
+                    self.shutdown()
+                    return None
+                    
                 get_data_start = time.perf_counter()
                 video_frame_data: ChatData = await self.client_session_delegate.get_data(EngineChannelType.VIDEO)
                 get_data_wait_time = time.perf_counter() - get_data_start
+
 
                 _slow_video_threshold_s = 0.12
                 if get_data_wait_time > _slow_video_threshold_s:
@@ -335,6 +341,7 @@ class RtcStream(AsyncAudioVideoStreamHandler):
     async def on_chat_datachannel(self, message: Dict, channel):
         # Respond to heartbeat Ping to keep TURN server and SCTP connection alive
         if message.get("header", {}).get("name") == "Ping":
+            self.last_ping_time = time.time()
             try:
                 channel.send(json.dumps({
                     "header": {"name": "Pong", "request_id": message.get("header", {}).get("request_id")},
@@ -342,6 +349,7 @@ class RtcStream(AsyncAudioVideoStreamHandler):
                 }))
             except Exception as e:
                 logger.debug(f"Failed to send Pong: {e}")
+
         # {"type":"chat",id:"Identifier for text belonging to the same utterance", "message":"Hello, world!"}
         # unique_id = uuid.uuid4().hex
         pass
