@@ -28,14 +28,12 @@ def transcribe_audio(audio: tuple[int, np.ndarray]):
     
     logger.info(f"[VAD Triggered] Speech detected! Audio shape: {audio_data.shape}, Max Amp: {max_amp}")
     
-    # SenseVoice expects mono audio, [1, N] float32 tensor/array
-    audio_float = audio_data.astype(np.float32).flatten() / 32768.0
-    audio_input = audio_float[np.newaxis, :]
+    audio_flat = audio_data.flatten()
     
     try:
         logger.debug("Running Speech-to-Text inference...")
         res = model.generate(
-            input=audio_input,
+            input=audio_flat,
             cache={},
             language="auto",
             use_itn=True,
