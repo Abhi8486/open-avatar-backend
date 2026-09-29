@@ -401,7 +401,7 @@ class StreamStorage:
         # recycle pool: keep finished streams for a grace period to avoid
         # dangling ref_stream lookups right after upstream finishes.
         self._finished_at: Dict[StreamKey, float] = {}
-        self._recycle_ttl = recycle_ttl
+        self._recycle_ttl = recycle_ttl if recycle_ttl > 10.0 else 120.0
         self._cleanup_interval = cleanup_interval
         self._last_cleanup = time.monotonic()
 
@@ -572,7 +572,7 @@ class ChatStreamer:
         self._default_config: ChatStreamConfig = ChatStreamConfig() if config is None else config
         # Keep ended upstream streams for a short grace period so downstream
         # outputs (e.g., HUMAN_TEXT) can still reference them for ref_streams.
-        self._ended_input_retention = 15.0  # seconds
+        self._ended_input_retention = 120.0  # seconds
 
     @property
     def data_type(self):
