@@ -33,9 +33,12 @@ default:
         buffer_look_back: 5000
         speech_padding: 512
       SenseVoice:
-        enabled: True
+        enabled: False
         module: asr/sensevoice/asr_handler_sensevoice
         model_name: "iic/SenseVoiceSmall"
+      Sarvam:
+        enabled: True
+        module: asr/sarvam/asr_handler_sarvam
       EdgeTTS:
         enabled: True
         module: tts/edgetts/tts_handler_edgetts
