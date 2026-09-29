@@ -18,7 +18,11 @@ default:
         connection_ttl: 900
         output_video_fps: 12  # Must equal AvatarMusetalk.fps for correct A/V sync
         turn_config:
-          urls: ["turn:global.relay.metered.ca:80"]
+          urls: 
+            - "turn:global.relay.metered.ca:80"
+            - "turn:global.relay.metered.ca:80?transport=tcp"
+            - "turn:global.relay.metered.ca:443"
+            - "turns:global.relay.metered.ca:443?transport=tcp"
           username: "8aa37256336b81d19b1b6de6"
           credential: "A9Chbapp7I3ExRaA"
       # === Interrupt Handler - Receives INTERRUPT signal and executes stream cancellation ===
