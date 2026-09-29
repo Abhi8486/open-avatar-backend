@@ -16,7 +16,9 @@ from chat_engine.data_models.chat_data.chat_data_model import ChatData
 from chat_engine.data_models.chat_data_type import ChatDataType
 from chat_engine.contexts.session_context import SessionContext
 from chat_engine.data_models.runtime_data.data_bundle import DataBundle, DataBundleDefinition, DataBundleEntry
+from chat_engine.data_models.chat_signal import ChatSignal, ChatSignalType, ChatSignalSourceType
 from engine_utils.directory_info import DirectoryInfo
+import concurrent.futures
 
 class TTSConfig(HandlerBaseConfigModel, BaseModel):
     ref_audio_path: str = Field(default=None)
@@ -60,10 +62,15 @@ class HandlerTTS(HandlerBase, ABC):
                 type=ChatDataType.AVATAR_TEXT,
             )
         }
+        text_def = DataBundleDefinition().add_entry(DataBundleEntry.create_string_entry("text_data"))
         outputs = {
             ChatDataType.AVATAR_AUDIO: HandlerDataInfo(
                 type=ChatDataType.AVATAR_AUDIO,
                 definition=definition,
+            ),
+            ChatDataType.AVATAR_TEXT: HandlerDataInfo(
+                type=ChatDataType.AVATAR_TEXT,
+                definition=text_def,
             )
         }
         return HandlerDetail(
@@ -98,6 +105,46 @@ class HandlerTTS(HandlerBase, ABC):
         filtered_text = re.sub(pattern, "", text)
         return filtered_text
 
+    def _generate_audio_with_timeout(self, sentence: str) -> Optional[bytes]:
+        def fetch_audio():
+            communicate = edge_tts.Communicate(sentence, self.voice)
+            data = b''
+            for chunk in communicate.stream_sync():
+                if chunk['type'] == 'audio':
+                    data += chunk['data']
+            return data
+        
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(fetch_audio)
+            try:
+                return future.result(timeout=5.0)
+            except concurrent.futures.TimeoutError:
+                logger.error(f"TTS generation timed out for sentence: {sentence}")
+                return None
+            except Exception as e:
+                logger.error(f"TTS generation failed: {e}")
+                return None
+
+    def _handle_tts_error(self, context: TTSContext, output_definitions: Dict[ChatDataType, HandlerDataInfo]):
+        context.input_text = ''
+        # Stop AvatarMusetalk and others
+        context.emit_signal(ChatSignal(
+            type=ChatSignalType.STREAM_CANCEL,
+            source_type=ChatSignalSourceType.HANDLER,
+            source_name="EdgeTTS"
+        ))
+        text_def = output_definitions.get(ChatDataType.AVATAR_TEXT)
+        if text_def:
+            err_bundle = DataBundle(text_def.definition)
+            err_bundle.set_main_data("\n\n(TTS Error: There is an issue, please try again.)")
+            context.submit_data((ChatDataType.AVATAR_TEXT, err_bundle), finish_stream=True)
+        # Finish audio stream gracefully
+        audio_def = output_definitions.get(ChatDataType.AVATAR_AUDIO)
+        if audio_def:
+            output = DataBundle(audio_def.definition)
+            output.set_main_data(np.zeros(shape=(1, 240), dtype=np.float32))
+            context.submit_data((ChatDataType.AVATAR_AUDIO, output), finish_stream=True)
+
     def handle(self, context: HandlerContext, inputs: ChatData,
                output_definitions: Dict[ChatDataType, HandlerDataInfo]):
         output_definition = output_definitions.get(ChatDataType.AVATAR_AUDIO).definition
@@ -123,38 +170,33 @@ class HandlerTTS(HandlerBase, ABC):
                         continue
                     logger.info('current sentence' + sentence)
                     
-                    communicate = edge_tts.Communicate(sentence, self.voice)
-                    data = b''
-
-                    for chunk in communicate.stream_sync():
-                        if chunk['type'] == 'audio':
-                            # tts_audio = chunk['data']
-                            data += chunk['data']
+                    data = self._generate_audio_with_timeout(sentence)
+                    if data is None:
+                        self._handle_tts_error(context, output_definitions)
+                        return
                     
                     output_audio = librosa.load(io.BytesIO(data), sr=None)[0]
                     output_audio = output_audio[np.newaxis, ...]
                     output = DataBundle(output_definition)
                     output.set_main_data(output_audio)
-                    context.submit_data(output)
+                    context.submit_data((ChatDataType.AVATAR_AUDIO, output))
         else:
             logger.info('last sentence' + context.input_text)
             if context.input_text is not None and len(context.input_text.strip()) > 0:
-                    communicate = edge_tts.Communicate(context.input_text, self.voice)
-                    data = b''
+                    data = self._generate_audio_with_timeout(context.input_text)
+                    if data is None:
+                        self._handle_tts_error(context, output_definitions)
+                        return
 
-                    for chunk in communicate.stream_sync():
-                        if chunk['type'] == 'audio':
-                            # tts_audio = chunk['data']
-                            data += chunk['data']
                     output_audio = librosa.load(io.BytesIO(data), sr=None)[0]
                     output_audio = output_audio[np.newaxis, ...]
                     output = DataBundle(output_definition)
                     output.set_main_data(output_audio)
-                    context.submit_data(output)
+                    context.submit_data((ChatDataType.AVATAR_AUDIO, output))
             context.input_text = ''
             output = DataBundle(output_definition)
             output.set_main_data(np.zeros(shape=(1, 240), dtype=np.float32))
-            context.submit_data(output, finish_stream=True)
+            context.submit_data((ChatDataType.AVATAR_AUDIO, output), finish_stream=True)
             logger.info(f"speech end")
 
     def destroy_context(self, context: HandlerContext):
