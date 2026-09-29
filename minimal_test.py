@@ -1,7 +1,7 @@
 import logging
 import numpy as np
 from funasr import AutoModel
-from fastrtc import ReplyOnPause
+from fastrtc import ReplyOnPause, Stream
 
 # Configure logging
 logging.basicConfig(
@@ -53,9 +53,15 @@ def transcribe_audio(audio: tuple[int, np.ndarray]):
 # ReplyOnPause handles WebRTC and automatically runs Silero VAD. 
 # Once you finish a sentence, it passes the audio chunk to `transcribe_audio`.
 logger.info("Initializing fastrtc ReplyOnPause stream...")
-stream = ReplyOnPause(
+handler = ReplyOnPause(
     transcribe_audio,
     input_sample_rate=16000,
+)
+
+stream = Stream(
+    handler=handler,
+    modality="audio",
+    mode="send"
 )
 
 # Use the identical TURN server config used in your main app
