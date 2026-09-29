@@ -28,7 +28,8 @@ def transcribe_audio(audio: tuple[int, np.ndarray]):
     
     logger.info(f"[VAD Triggered] Speech detected! Audio shape: {audio_data.shape}, Max Amp: {max_amp}")
     
-    audio_flat = audio_data.flatten()
+    # Convert from int16 to float32 (SenseVoice requires float32)
+    audio_flat = audio_data.astype(np.float32).flatten() / 32768.0
     
     try:
         logger.debug("Running Speech-to-Text inference...")
