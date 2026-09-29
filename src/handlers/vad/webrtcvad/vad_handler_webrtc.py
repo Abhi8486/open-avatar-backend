@@ -148,9 +148,13 @@ class HandlerAudioVAD(HandlerBase):
                     context.voiced_frames = []
 
     def on_signal(self, context: HandlerContext, signal: ChatSignal):
-        if signal.signal_type == ChatSignalType.STREAM_BEGIN:
-            context.input_enabled = False
-            logger.info("WebRTCVAD: Paused listening (Simplex mode)")
-        elif signal.signal_type in (ChatSignalType.STREAM_END, ChatSignalType.STREAM_CANCEL):
-            context.input_enabled = True
-            logger.info("WebRTCVAD: Resumed listening (Simplex mode)")
+        if signal.stream_data_type == ChatDataType.CLIENT_PLAYBACK:
+            if signal.signal_type == ChatSignalType.STREAM_BEGIN:
+                context.input_enabled = False
+                logger.info("WebRTCVAD: Paused listening (Simplex mode)")
+            elif signal.signal_type in (ChatSignalType.STREAM_END, ChatSignalType.STREAM_CANCEL):
+                context.input_enabled = True
+                logger.info("WebRTCVAD: Resumed listening (Simplex mode)")
+        elif signal.stream_data_type == ChatDataType.HUMAN_AUDIO:
+            if signal.signal_type == ChatSignalType.STREAM_CANCEL:
+                context.triggered = False
