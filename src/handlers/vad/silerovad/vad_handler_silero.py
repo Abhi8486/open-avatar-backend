@@ -471,8 +471,7 @@ class HandlerAudioVAD(HandlerBase, ABC):
             
             speech_prob = self._inference(context, clip)
             
-            if (context.speaking_status in (SpeakingStatus.END, SpeakingStatus.POST_END)
-                and db < context.config.volume_threshold):
+            if db < context.config.volume_threshold:
                 speech_prob = 0.0
             
             if not hasattr(context, '_prob_log_counter'): context._prob_log_counter = 0
