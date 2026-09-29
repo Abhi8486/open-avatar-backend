@@ -94,6 +94,8 @@ class HandlerAudioVAD(HandlerBase):
         if audio is None:
             return
             
+        output_definition = output_definitions.get(ChatDataType.HUMAN_AUDIO).definition
+            
         # Ensure int16
         if audio.dtype != np.int16:
             audio = (audio * 32767).astype(np.int16)
@@ -115,10 +117,7 @@ class HandlerAudioVAD(HandlerBase):
                 if num_voiced > 0.9 * context.ring_buffer.maxlen:
                     context.triggered = True
                     logger.info("WebRTCVAD: Start of speech detected!")
-                    # Yield start signal
-                    self.emit_signal(context, ChatSignal(ChatSignalType.STREAM_BEGIN, ChatSignalSourceType.HANDLER, ChatDataType.HUMAN_AUDIO))
-                    
-                    # Yield all buffered frames
+                    # Yield all buffered frames first
                     for f, s in context.ring_buffer:
                         context.voiced_frames.append(f)
                     context.ring_buffer.clear()
@@ -138,18 +137,17 @@ class HandlerAudioVAD(HandlerBase):
                     # Reshape for output
                     complete_audio = np.expand_dims(complete_audio, axis=0)
                     
-                    bundle = DataBundle()
+                    bundle = DataBundle(output_definition)
                     bundle.entries["human_audio"] = DataBundleEntry(complete_audio, 1, context.sample_rate)
                     
                     data = ChatData(ChatDataType.HUMAN_AUDIO, bundle)
-                    self.emit(context, data)
-                    
-                    self.emit_signal(context, ChatSignal(ChatSignalType.STREAM_END, ChatSignalSourceType.HANDLER, ChatDataType.HUMAN_AUDIO))
+                    data.is_last_data = True
+                    context.submit_data(data, finish_stream=True)
                     
                     context.ring_buffer.clear()
                     context.voiced_frames = []
 
-    def handle_signal(self, context: HandlerContext, signal: ChatSignal):
+    def on_signal(self, context: HandlerContext, signal: ChatSignal):
         if signal.signal_type == ChatSignalType.STREAM_BEGIN:
             context.input_enabled = False
             logger.info("WebRTCVAD: Paused listening (Simplex mode)")
