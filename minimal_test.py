@@ -1,6 +1,5 @@
 import logging
 import numpy as np
-from funasr import AutoModel
 from fastrtc import ReplyOnPause, Stream
 
 # Configure logging
@@ -15,12 +14,13 @@ logger = logging.getLogger("MinimalSTT")
 logging.getLogger("fastrtc").setLevel(logging.DEBUG)
 logging.getLogger("aiortc").setLevel(logging.INFO)
 
-logger.info("Loading SenseVoice model...")
-try:
-    model = AutoModel(model="iic/SenseVoiceSmall", disable_update=True)
-    logger.info("SenseVoice loaded successfully!")
-except Exception as e:
-    logger.error(f"Failed to load SenseVoice: {e}")
+import requests
+import os
+import io
+import scipy.io.wavfile as wavfile
+
+# Note: You need to set SARVAM_API_KEY environment variable in Colab.
+# If you don't have it set, we will show a clear error.
 
 def transcribe_audio(audio: tuple[int, np.ndarray]):
     sample_rate, audio_data = audio
@@ -28,32 +28,55 @@ def transcribe_audio(audio: tuple[int, np.ndarray]):
     
     logger.info(f"[VAD Triggered] Speech detected! Audio shape: {audio_data.shape}, Max Amp: {max_amp}")
     
-    # Convert from int16 to float32 (SenseVoice requires float32)
-    audio_flat = audio_data.astype(np.float32).flatten() / 32768.0
-    
+    api_key = os.environ.get("SARVAM_API_KEY")
+    if not api_key:
+        print(">>> ERROR: SARVAM_API_KEY environment variable is not set. Please set it in your Colab notebook!", flush=True)
+        yield (16000, np.zeros(160, dtype=np.int16))
+        return
+
+    # Convert audio data to wav file in memory
     try:
-        print(">>> Running Speech-to-Text inference...", flush=True)
-        res = model.generate(
-            input=audio_flat,
-            cache={},
-            language="auto",
-            use_itn=True,
-        )
-        print(f">>> RAW STT RESULT: {res}", flush=True)
+        # audio_data comes in as shape (16000, ...) but it's mono so let's flatten it just in case
+        audio_flat = audio_data.flatten()
         
-        if len(res) > 0 and 'text' in res[0]:
-            text = res[0]['text']
+        # Save to BytesIO
+        wav_io = io.BytesIO()
+        wavfile.write(wav_io, sample_rate, audio_flat)
+        wav_io.seek(0)
+        
+        print(">>> Running Speech-to-Text inference using Sarvam AI...", flush=True)
+        url = "https://api.sarvam.ai/speech-to-text"
+        
+        headers = {
+            "api-subscription-key": api_key
+        }
+        
+        # language_code 'hi-IN' supports Hindi and English code-mixed by default, but we can also use 'en-IN' for English.
+        # We will use 'hi-IN' as it handles Hinglish very well.
+        payload = {
+            "model": "saaras:v4",
+        }
+        
+        files = {
+            "file": ("audio.wav", wav_io, "audio/wav")
+        }
+        
+        response = requests.post(url, headers=headers, data=payload, files=files)
+        
+        if response.status_code == 200:
+            res_json = response.json()
+            print(f">>> RAW STT RESULT: {res_json}", flush=True)
+            text = res_json.get("transcript", "")
             print(f">>> TRANSCRIBED: {text}", flush=True)
         else:
-            print(">>> WARNING: No 'text' in result!", flush=True)
-            
-        # Yield a tiny silent audio chunk so ReplyOnPause doesn't crash
-        silent_audio = np.zeros(160, dtype=np.int16)
-        yield (16000, silent_audio)
+            print(f">>> ERROR from Sarvam AI: {response.status_code} {response.text}", flush=True)
+
     except Exception as e:
         print(f">>> Transcription EXCEPTION: {e}", flush=True)
-        silent_audio = np.zeros(160, dtype=np.int16)
-        yield (16000, silent_audio)
+        
+    # Yield a tiny silent audio chunk so ReplyOnPause doesn't crash
+    silent_audio = np.zeros(160, dtype=np.int16)
+    yield (16000, silent_audio)
 
 
 # ReplyOnPause handles WebRTC and automatically runs Silero VAD. 
