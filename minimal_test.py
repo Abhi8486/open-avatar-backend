@@ -32,21 +32,26 @@ def transcribe_audio(audio: tuple[int, np.ndarray]):
     audio_flat = audio_data.astype(np.float32).flatten() / 32768.0
     
     try:
-        logger.debug("Running Speech-to-Text inference...")
+        print(">>> Running Speech-to-Text inference...", flush=True)
         res = model.generate(
             input=audio_flat,
             cache={},
             language="auto",
             use_itn=True,
         )
-        text = res[0]['text']
-        logger.info(f">>> TRANSCRIBED: {text}")
+        print(f">>> RAW STT RESULT: {res}", flush=True)
         
+        if len(res) > 0 and 'text' in res[0]:
+            text = res[0]['text']
+            print(f">>> TRANSCRIBED: {text}", flush=True)
+        else:
+            print(">>> WARNING: No 'text' in result!", flush=True)
+            
         # Yield a tiny silent audio chunk so ReplyOnPause doesn't crash
         silent_audio = np.zeros(160, dtype=np.int16)
         yield (16000, silent_audio)
     except Exception as e:
-        logger.error(f"Transcription error: {e}")
+        print(f">>> Transcription EXCEPTION: {e}", flush=True)
         silent_audio = np.zeros(160, dtype=np.int16)
         yield (16000, silent_audio)
 
