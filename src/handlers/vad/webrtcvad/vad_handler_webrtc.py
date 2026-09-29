@@ -42,17 +42,18 @@ class WebRTCVADContext(HandlerContext):
 
 
 class HandlerAudioVAD(HandlerBase):
-    def __init__(self, config: dict):
-        super().__init__(config)
+    def __init__(self):
+        super().__init__()
         if webrtcvad is None:
             logger.error("webrtcvad package is not installed! Please run: pip install webrtcvad")
 
     def _get_context_class(self):
         return WebRTCVADContext
 
-    def create_context(self, session_context: SessionContext) -> HandlerContext:
-        context = super().create_context(session_context)
-        context.config = WebRTCVADConfigModel(**self.config_dict)
+    def create_context(self, session_context: SessionContext, handler_config = None) -> HandlerContext:
+        context = WebRTCVADContext(session_context.session_info.session_id)
+        if isinstance(handler_config, WebRTCVADConfigModel):
+            context.config = handler_config
         if webrtcvad is not None:
             context.vad = webrtcvad.Vad(context.config.aggressiveness)
         context.frame_length = int(context.sample_rate * (context.config.frame_duration_ms / 1000.0))
