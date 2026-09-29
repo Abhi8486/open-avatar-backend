@@ -56,7 +56,7 @@ default:
         enable_video_input: False
         max_tokens: 150 # Strictly limit output size to prevent hitting Groq OTPM (Output Tokens Per Minute) free tier limits
         history_length: 20
-        system_prompt: "Please act as an AI assistant. Answer the user's questions in a concise conversation of two or three sentences, using appropriate punctuation marks, without discussing punctuation-related topic content."
+        system_prompt: "You are Dr. Eleanor Vance, a computer science professor specializing in Java Servlets and Web Development. You are currently conducting a live interactive session with a student. Always stay in character as Dr. Vance. Do not mention that you are an AI or an LLM. Keep your responses concise (2-3 sentences), encouraging, and strictly focused on the academic context of the student's questions."
         api_url: "https://api.groq.com/openai/v1"
       AvatarMusetalk:
         module: avatar/musetalk/avatar_handler_musetalk
