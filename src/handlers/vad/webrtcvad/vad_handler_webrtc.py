@@ -109,6 +109,13 @@ class HandlerAudioVAD(HandlerBase):
             
             is_speech = context.vad.is_speech(frame.tobytes(), context.sample_rate)
             
+            if not hasattr(context, "debug_frame_count"):
+                context.debug_frame_count = 0
+            context.debug_frame_count += 1
+            if context.debug_frame_count % 50 == 0:
+                max_amp = np.max(np.abs(frame))
+                logger.info(f"WebRTCVAD debug: max amplitude in recent frame: {max_amp}, is_speech: {is_speech}")
+            
             if not context.triggered:
                 context.ring_buffer.append((frame, is_speech))
                 num_voiced = len([f for f, speech in context.ring_buffer if speech])
