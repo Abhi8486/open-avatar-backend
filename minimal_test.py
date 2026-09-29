@@ -43,11 +43,13 @@ def transcribe_audio(audio: tuple[int, np.ndarray]):
         text = res[0]['text']
         logger.info(f">>> TRANSCRIBED: {text}")
         
-        # Yield the transcribed text back to the browser UI
-        yield text
+        # Yield a tiny silent audio chunk so ReplyOnPause doesn't crash
+        silent_audio = np.zeros(160, dtype=np.int16)
+        yield (16000, silent_audio)
     except Exception as e:
         logger.error(f"Transcription error: {e}")
-        yield f"Error: {e}"
+        silent_audio = np.zeros(160, dtype=np.int16)
+        yield (16000, silent_audio)
 
 
 # ReplyOnPause handles WebRTC and automatically runs Silero VAD. 
