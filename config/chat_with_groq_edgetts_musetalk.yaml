@@ -26,10 +26,10 @@ default:
         module: logic/interrupt/interrupt_handler
       SileroVad:
         module: vad/silerovad/vad_handler_silero
-        speaking_threshold: 0.0001
-        volume_threshold: -60
-        start_delay: 512
-        end_delay: 5000
+        speaking_threshold: 0.3
+        volume_threshold: -40
+        start_delay: 2048
+        end_delay: 16000
         buffer_look_back: 5000
         speech_padding: 512
       SenseVoice:
