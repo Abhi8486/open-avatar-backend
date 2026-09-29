@@ -61,13 +61,13 @@ handler = ReplyOnPause(
 stream = Stream(
     handler=handler,
     modality="audio",
-    mode="send"
+    mode="send",
+    concurrency_limit=100,
+    time_limit=900,
+    rtc_configuration={
+        "iceServers": [{"urls": ["turn:global.relay.metered.ca:80"], "username": "8aa37256336b81d19b1b6de6", "credential": "A9Chbapp7I3ExRaA"}]
+    }
 )
-
-# Use the identical TURN server config used in your main app
-stream.rtc_configuration = {
-    "iceServers": [{"urls": ["turn:global.relay.metered.ca:80"], "username": "8aa37256336b81d19b1b6de6", "credential": "A9Chbapp7I3ExRaA"}]
-}
 
 if __name__ == "__main__":
     logger.info("Starting Minimal WebRTC -> VAD -> STT Server on port 8282...")
