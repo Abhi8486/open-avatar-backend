@@ -138,7 +138,7 @@ class HandlerAudioVAD(HandlerBase):
                     complete_audio = np.expand_dims(complete_audio, axis=0)
                     
                     bundle = DataBundle(output_definition)
-                    bundle.entries["human_audio"] = DataBundleEntry(complete_audio, 1, context.sample_rate)
+                    bundle.set_main_data(complete_audio)
                     
                     data = ChatData(ChatDataType.HUMAN_AUDIO, bundle)
                     data.is_last_data = True
