@@ -469,9 +469,10 @@ class HandlerAudioVAD(HandlerBase, ABC):
                 context.peak_volume = db
             head_sample_id = context.slice_context.get_last_slice_start_index()
             
-            speech_prob = self._inference(context, clip)
-            
-            if db < context.config.volume_threshold:
+            # PURE VOLUME-BASED VAD
+            if db >= context.config.volume_threshold:
+                speech_prob = 1.0
+            else:
                 speech_prob = 0.0
             
             if not hasattr(context, '_prob_log_counter'): context._prob_log_counter = 0
