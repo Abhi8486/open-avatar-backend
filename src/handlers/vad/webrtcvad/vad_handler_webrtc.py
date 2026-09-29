@@ -9,14 +9,14 @@ try:
 except ImportError:
     webrtcvad = None
 
-from chat_engine.common.handler_base import HandlerBase, HandlerDetail, HandlerDataInfo
+from chat_engine.common.handler_base import HandlerBase, HandlerDetail, HandlerDataInfo, HandlerBaseInfo
 from chat_engine.data_models.chat_data_type import ChatDataType
 from chat_engine.data_models.chat_signal import ChatSignal, SignalFilterRule
 from chat_engine.data_models.chat_signal_type import ChatSignalType, ChatSignalSourceType
 from chat_engine.contexts.handler_context import HandlerContext
 from chat_engine.contexts.session_context import SessionContext
 from chat_engine.data_models.chat_data.chat_data_model import ChatData
-from chat_engine.data_models.chat_engine_config_data import HandlerBaseConfigModel
+from chat_engine.data_models.chat_engine_config_data import HandlerBaseConfigModel, ChatEngineConfigModel
 from chat_engine.data_models.runtime_data.data_bundle import DataBundle, DataBundleDefinition, DataBundleEntry
 
 
@@ -59,6 +59,18 @@ class HandlerAudioVAD(HandlerBase):
         num_padding_frames = int(context.config.padding_duration_ms / context.config.frame_duration_ms)
         context.ring_buffer = collections.deque(maxlen=num_padding_frames)
         return context
+
+    def get_handler_info(self) -> HandlerBaseInfo:
+        return HandlerBaseInfo(config_model=WebRTCVADConfigModel)
+
+    def load(self, engine_config: ChatEngineConfigModel, handler_config = None):
+        pass
+
+    def start_context(self, session_context: SessionContext, handler_context: HandlerContext):
+        pass
+
+    def destroy_context(self, context: HandlerContext):
+        pass
 
     def get_handler_detail(self, session_context: SessionContext, context: HandlerContext) -> HandlerDetail:
         definition = DataBundleDefinition()
