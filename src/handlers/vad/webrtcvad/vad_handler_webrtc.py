@@ -138,20 +138,30 @@ class HandlerAudioVAD(HandlerBase):
                 # If >50% of ring buffer is silence (zeros), the user released the button!
                 if num_unvoiced > 0.5 * context.ring_buffer.maxlen:
                     context.triggered = False
-                    logger.info("PTT: Button release detected! Sending all recorded audio to ASR...")
                     
-                    # Send collected audio
-                    complete_audio = np.concatenate(context.voiced_frames)
+                    # Filter out any pure-silence frames from voiced_frames before sending
+                    real_audio_frames = [f for f in context.voiced_frames if np.max(np.abs(f)) > 0]
                     
-                    # Reshape for output
-                    complete_audio = np.expand_dims(complete_audio, axis=0)
-                    
-                    bundle = DataBundle(output_definition)
-                    bundle.set_main_data(complete_audio)
-                    
-                    data = ChatData(ChatDataType.HUMAN_AUDIO, bundle)
-                    data.is_last_data = True
-                    context.submit_data(data, finish_stream=True)
+                    if len(real_audio_frames) > 0:
+                        logger.info(f"PTT: Button release detected! Sending {len(real_audio_frames)} audio frames to ASR...")
+                        
+                        # Send collected audio
+                        complete_audio = np.concatenate(real_audio_frames)
+                        
+                        # Reshape for output
+                        complete_audio = np.expand_dims(complete_audio, axis=0)
+                        
+                        bundle = DataBundle(output_definition)
+                        bundle.set_main_data(complete_audio)
+                        
+                        data = ChatData(
+                            type=ChatDataType.HUMAN_AUDIO,
+                            data=bundle,
+                            is_last_data=True
+                        )
+                        context.submit_data(data, finish_stream=True)
+                    else:
+                        logger.info("PTT: Button released but no real audio captured, skipping ASR.")
                     
                     context.ring_buffer.clear()
                     context.voiced_frames = []
