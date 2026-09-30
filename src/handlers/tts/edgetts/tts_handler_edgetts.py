@@ -62,7 +62,7 @@ class HandlerTTS(HandlerBase, ABC):
                 type=ChatDataType.AVATAR_TEXT,
             )
         }
-        text_def = DataBundleDefinition().add_entry(DataBundleEntry.create_string_entry("text_data"))
+        text_def = DataBundleDefinition().add_entry(DataBundleEntry.create_text_entry("text_data"))
         outputs = {
             ChatDataType.AVATAR_AUDIO: HandlerDataInfo(
                 type=ChatDataType.AVATAR_AUDIO,
