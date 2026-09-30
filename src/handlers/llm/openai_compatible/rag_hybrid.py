@@ -120,7 +120,7 @@ def ingest_file(tenant_id: str, course_id: str, file_path: str, api_key: str):
 
     ingest_document(tenant_id, course_id, text, api_key)
 
-def hybrid_rrf_search(tenant_id: str, query: str, query_embedding: list, limit: int = 3) -> list:
+def hybrid_rrf_search(tenant_id: str, course_id: str, query: str, query_embedding: list, limit: int = 3) -> list:
     """
     Milestone C: The Hybrid RRF Query Function
     Performs parallel semantic + lexical searches and merges them using RRF.
@@ -132,7 +132,7 @@ def hybrid_rrf_search(tenant_id: str, query: str, query_embedding: list, limit: 
         SELECT id, content,
                ROW_NUMBER() OVER (ORDER BY embedding <=> %s::vector) AS rank
         FROM course_knowledge
-        WHERE tenant_id = %s
+        WHERE tenant_id = %s AND (course_id = %s OR %s = 'default')
         ORDER BY embedding <=> %s::vector
         LIMIT 20
     ),
@@ -140,7 +140,7 @@ def hybrid_rrf_search(tenant_id: str, query: str, query_embedding: list, limit: 
         SELECT id, content,
                ROW_NUMBER() OVER (ORDER BY ts_rank(fts_vector, plainto_tsquery('english', %s)) DESC) AS rank
         FROM course_knowledge
-        WHERE tenant_id = %s AND fts_vector @@ plainto_tsquery('english', %s)
+        WHERE tenant_id = %s AND (course_id = %s OR %s = 'default') AND fts_vector @@ plainto_tsquery('english', %s)
         ORDER BY ts_rank(fts_vector, plainto_tsquery('english', %s)) DESC
         LIMIT 20
     )
@@ -164,8 +164,8 @@ def hybrid_rrf_search(tenant_id: str, query: str, query_embedding: list, limit: 
         with conn.cursor() as cur:
             # Bind parameters strictly to prevent SQL injection and data leakage
             cur.execute(sql, (
-                query_vector_str, tenant_id, query_vector_str,
-                query, tenant_id, query, query,
+                query_vector_str, tenant_id, course_id, course_id, query_vector_str,
+                query, tenant_id, course_id, course_id, query, query,
                 limit
             ))
             results = cur.fetchall()

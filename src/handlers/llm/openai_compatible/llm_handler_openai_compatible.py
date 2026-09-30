@@ -175,8 +175,9 @@ class HandlerLLM(HandlerBase, ABC):
             emb_elapsed = (time.time() - emb_start) * 1000
             logger.info(f"Local Embedding Model took {emb_elapsed:.2f}ms")
             
-            # Note: Using 'default' tenant_id for demonstration
-            retrieved_chunks = hybrid_rrf_search("default", chat_text, query_emb)
+            # Note: Using 'default' tenant_id and 'java_web_dev' course_id for demonstration
+            # In a real system, these would be dynamic based on the user session
+            retrieved_chunks = hybrid_rrf_search("default", "java_web_dev", chat_text, query_emb)
             if retrieved_chunks:
                 rag_context = "\n\n--- RELEVANT COURSE MATERIAL ---\n" + "\n\n".join(retrieved_chunks)
                 
