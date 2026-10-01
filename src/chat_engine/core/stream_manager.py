@@ -386,7 +386,7 @@ class ChatStream:
 
 class StreamStorage:
     def __init__(self, 
-                 recycle_ttl: float = 10.0,
+                 recycle_ttl: float = 60.0,
                  cleanup_interval: float = 1.0):
         """
         Initialize stream storage with configurable lifecycle parameters.
@@ -878,7 +878,7 @@ class ChatStreamer:
 
 class StreamManager:
     def __init__(self, signal_manager: SignalManager,
-                 recycle_ttl: float = 10.0,
+                 recycle_ttl: float = 60.0,
                  cleanup_interval: float = 1.0):
         """
         Initialize stream manager.

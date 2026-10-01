@@ -536,6 +536,9 @@ class ClientHandlerRtc(ClientHandlerBase):
         stream_metadata = None
         if inputs.data is not None and getattr(inputs.data, "metadata", None):
             stream_metadata = dict(inputs.data.metadata)
+        
+        logger.info(f"Sending text to frontend ({inputs.type.name}): {text}")
+        
         if inputs.type == ChatDataType.HUMAN_TEXT:
             response = EchoHumanText(
                 header=MessageHeader(name=MessageType.ECHO_HUMAN_TEXT, request_id=str(uuid4())),

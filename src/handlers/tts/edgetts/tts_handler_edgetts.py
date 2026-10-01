@@ -170,12 +170,16 @@ class HandlerTTS(HandlerBase, ABC):
                         continue
                     logger.info('current sentence' + sentence)
                     
+                    start_fetch = time.time()
                     data = self._generate_audio_with_timeout(sentence)
+                    logger.info(f"EdgeTTS fetch_audio took {time.time() - start_fetch:.2f} seconds")
                     if data is None:
                         self._handle_tts_error(context, output_definitions)
                         return
                     
+                    start_librosa = time.time()
                     output_audio = librosa.load(io.BytesIO(data), sr=None)[0]
+                    logger.info(f"EdgeTTS librosa.load took {time.time() - start_librosa:.2f} seconds")
                     output_audio = output_audio[np.newaxis, ...]
                     output = DataBundle(output_definition)
                     output.set_main_data(output_audio)
