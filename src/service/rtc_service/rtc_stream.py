@@ -203,7 +203,12 @@ class RtcStream(AsyncAudioVideoStreamHandler):
                     return None
                     
                 get_data_start = time.perf_counter()
-                video_frame_data: ChatData = await self.client_session_delegate.get_data(EngineChannelType.VIDEO)
+                
+                # Poll queue with 0.001 timeout to prevent blocking fastrtc's internal 30 FPS clock
+                video_frame_data: ChatData = await self.client_session_delegate.get_data(
+                    EngineChannelType.VIDEO, timeout=0.001
+                )
+                
                 get_data_wait_time = time.perf_counter() - get_data_start
 
 
@@ -215,12 +220,20 @@ class RtcStream(AsyncAudioVideoStreamHandler):
                     )
                 
                 if video_frame_data is None or video_frame_data.data is None:
+                    # Duplicate last frame to match fastrtc's expected frame rate
+                    if getattr(self, "_last_video_frame", None) is not None:
+                        return self._last_video_frame
+                    await asyncio.sleep(0.01)
                     continue
                 
                 frame_data = video_frame_data.data.get_main_data().squeeze()
                 if frame_data is None:
+                    if getattr(self, "_last_video_frame", None) is not None:
+                        return self._last_video_frame
+                    await asyncio.sleep(0.01)
                     continue
 
+                self._last_video_frame = frame_data
                 return frame_data
         except Exception as e:
             logger.opt(exception=e).error("Error in video_emit")

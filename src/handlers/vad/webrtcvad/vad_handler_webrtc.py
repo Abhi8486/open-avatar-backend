@@ -107,10 +107,12 @@ class HandlerAudioVAD(HandlerBase):
             frame = context.audio_buffer[:context.frame_length]
             context.audio_buffer = context.audio_buffer[context.frame_length:]
             
-            # Push-To-Talk Mode: The frontend mutes the mic (sending absolute silence) when the button is not held.
-            # So ANY non-zero amplitude means the button is currently held down!
-            max_amp = np.max(np.abs(frame))
-            is_speech = max_amp > 0
+            # Use webrtcvad for actual speech detection instead of naive amplitude
+            try:
+                is_speech = context.vad.is_speech(frame.tobytes(), context.sample_rate)
+            except Exception as e:
+                logger.error(f"WebRTCVAD Error: {e}")
+                is_speech = False
             
             if not hasattr(context, "debug_frame_count"):
                 context.debug_frame_count = 0
@@ -167,13 +169,17 @@ class HandlerAudioVAD(HandlerBase):
                     context.voiced_frames = []
 
     def on_signal(self, context: HandlerContext, signal: ChatSignal):
-        if signal.stream_data_type == ChatDataType.CLIENT_PLAYBACK:
-            if signal.signal_type == ChatSignalType.STREAM_BEGIN:
+        related_stream = signal.related_stream
+        if related_stream is None:
+            return
+            
+        if related_stream.data_type == ChatDataType.CLIENT_PLAYBACK:
+            if signal.type == ChatSignalType.STREAM_BEGIN:
                 context.input_enabled = False
                 logger.info("WebRTCVAD: Paused listening (Simplex mode)")
-            elif signal.signal_type in (ChatSignalType.STREAM_END, ChatSignalType.STREAM_CANCEL):
+            elif signal.type in (ChatSignalType.STREAM_END, ChatSignalType.STREAM_CANCEL):
                 context.input_enabled = True
                 logger.info("WebRTCVAD: Resumed listening (Simplex mode)")
-        elif signal.stream_data_type == ChatDataType.HUMAN_AUDIO:
-            if signal.signal_type == ChatSignalType.STREAM_CANCEL:
+        elif related_stream.data_type == ChatDataType.HUMAN_AUDIO:
+            if signal.type == ChatSignalType.STREAM_CANCEL:
                 context.triggered = False
