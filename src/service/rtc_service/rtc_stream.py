@@ -197,8 +197,8 @@ class RtcStream(AsyncAudioVideoStreamHandler):
             self.emit_counter.add_property("video_emit")
             
             while not self.quit.is_set():
-                if time.time() - self.last_ping_time > 15.0:
-                    logger.warning(f"[{self.session_id}] Connection timed out due to missing Ping (15s)")
+                if time.time() - self.last_ping_time > 60.0:
+                    logger.warning(f"[{self.session_id}] Connection timed out due to missing Ping (60s)")
                     self.shutdown()
                     return None
                     
@@ -322,7 +322,7 @@ class RtcStream(AsyncAudioVideoStreamHandler):
                     self.client_session_delegate.put_data(
                         EngineChannelType.TEXT,
                         message['payload']['text'],
-                        loopback=True
+                        loopback=False
                     )
                     # Keep immediate user-text echo for pure RTC mode.
                     # WsLam delegate has its own text echo path, so skip here to avoid duplicates.
