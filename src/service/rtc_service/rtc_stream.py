@@ -352,6 +352,8 @@ class RtcStream(AsyncAudioVideoStreamHandler):
     async def on_chat_datachannel(self, message: Dict, channel):
         pass
     def shutdown(self):
+        import traceback
+        logger.warning(f"[{self.session_id}] RtcStream.shutdown() called! Stack trace:\n{''.join(traceback.format_stack())}")
         self.quit.set()
         factory = None
         if self.weak_factory is not None:
@@ -362,4 +364,5 @@ class RtcStream(AsyncAudioVideoStreamHandler):
         if self.session_id in factory.streams:
             factory.streams.pop(self.session_id, None)
         if self.owns_session and factory.client_handler_delegate is not None:
+            logger.warning(f"[{self.session_id}] shutdown: stopping session (owns_session=True)")
             factory.client_handler_delegate.stop_session(self.session_id)
