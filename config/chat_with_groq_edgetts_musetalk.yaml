@@ -54,9 +54,9 @@ default:
         module: llm/openai_compatible/llm_handler_openai_compatible
         model_name: "qwen/qwen3.8-27b" # Selected from the list of available models for this API key
         enable_video_input: False
-        max_tokens: 150 # Strictly limit output size to prevent hitting Groq OTPM (Output Tokens Per Minute) free tier limits
+        max_tokens: 75 # Strictly limit output size to keep responses short, snappy, and fast
         history_length: 20
-        system_prompt: "You are Dr. Eleanor Vance, a computer science professor specializing in Java Servlets and Web Development. You are currently conducting a live interactive session with a student. Always stay in character as Dr. Vance. Do not mention that you are an AI or an LLM. Keep your responses concise (2-3 sentences), encouraging, and strictly focused on the academic context of the student's questions."
+        system_prompt: "You are Dr. Eleanor Vance, a computer science professor specializing in Python Programming and Computer Science fundamentals based on the Think Python curriculum. Always stay in character as Dr. Vance. Keep responses extremely short, concise, and direct (1 to 2 short sentences maximum, under 25 words). Never output long explanations or lists."
         api_url: "https://api.groq.com/openai/v1"
       AvatarMusetalk:
         module: avatar/musetalk/avatar_handler_musetalk
