@@ -134,7 +134,7 @@ class HandlerASRSarvam(HandlerBase, ABC):
         }
 
         try:
-            response = requests.post("https://api.sarvam.ai/speech-to-text", headers=headers, data=data, files=files)
+            response = requests.post("https://api.sarvam.ai/speech-to-text", headers=headers, data=data, files=files, timeout=10)
             if response.status_code == 200:
                 result = response.json()
                 transcript = result.get('transcript', '').strip()
@@ -144,11 +144,22 @@ class HandlerASRSarvam(HandlerBase, ABC):
                     output.set_main_data(transcript)
                     context.submit_data(output, finish_stream=True)
                 else:
-                    logger.warning("Sarvam ASR returned empty transcript.")
+                    logger.warning("Sarvam ASR returned empty transcript — finishing stream with empty text so pipeline resets.")
+                    output = DataBundle(output_definition)
+                    output.set_main_data('')
+                    context.submit_data(output, finish_stream=True)
             else:
                 logger.error(f"Sarvam AI Error: {response.status_code} - {response.text}")
+                # Finish stream on error so the pipeline doesn't hang
+                output = DataBundle(output_definition)
+                output.set_main_data('')
+                context.submit_data(output, finish_stream=True)
         except Exception as e:
             logger.error(f"Failed to call Sarvam AI STT API: {e}")
+            # Finish stream on exception so the pipeline doesn't hang
+            output = DataBundle(output_definition)
+            output.set_main_data('')
+            context.submit_data(output, finish_stream=True)
 
     def destroy_context(self, context: HandlerContext):
         pass
