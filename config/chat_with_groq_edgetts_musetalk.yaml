@@ -25,8 +25,8 @@ default:
             - "turn:global.relay.metered.ca:80?transport=tcp"
             - "turn:global.relay.metered.ca:443"
             - "turns:global.relay.metered.ca:443?transport=tcp"
-          username: "8aa37256336b81d19b1b6de6"
-          credential: "A9Chbapp7I3ExRaA"
+          username: "ab835d950897622e10c8082b"
+          credential: "mnvd7fQ0r2Z0rskz"
       # === Interrupt Handler - Receives INTERRUPT signal and executes stream cancellation ===
       InterruptHandler:
         module: logic/interrupt/interrupt_handler
