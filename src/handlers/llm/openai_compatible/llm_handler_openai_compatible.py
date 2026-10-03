@@ -187,13 +187,21 @@ class HandlerLLM(HandlerBase, ABC):
                 sys_prompt['content'] += f"\n\nStudent Question Context:\n{rag_context}\n\nStrict Instruction: Answer the student based ONLY on the course material above."
                 messages_to_send = [sys_prompt] + current_content
             else:
-                # No knowledge found -> Force the AI to reject the question
-                sys_prompt = dict(context.system_prompt)
-                sys_prompt['content'] = "You are an AI Tutor. The student asked a question, but no relevant information was found in the curriculum database. You MUST reply with a variation of: 'I am sorry, but that topic is not in the book and is outside of our current curriculum.'"
-                messages_to_send = [sys_prompt] + current_content
+                # No RAG chunks found — use the original persona prompt and let the LLM
+                # answer from its built-in knowledge. Do NOT replace the persona.
+                logger.info("No RAG chunks found — using base persona knowledge.")
+                messages_to_send = [context.system_prompt] + current_content
         except Exception as e:
             logger.error(f"Hybrid RAG search failed: {e}")
         # ---------------------------------------------------
+
+        # Suppress Qwen3 thinking tokens so they don't consume max_tokens budget.
+        # Append /no_think to the last user message content.
+        for msg in reversed(messages_to_send):
+            if msg.get('role') == 'user':
+                if isinstance(msg.get('content'), str) and '/no_think' not in msg['content']:
+                    msg['content'] += ' /no_think'
+                break
 
         logger.debug(f'llm input {context.model_name} {current_content} ')
         if stream_key:

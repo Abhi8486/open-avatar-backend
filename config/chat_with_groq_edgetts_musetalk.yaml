@@ -32,7 +32,7 @@ default:
         module: logic/interrupt/interrupt_handler
       SileroVad:
         module: vad/webrtcvad/vad_handler_webrtc
-        aggressiveness: 1
+        aggressiveness: 3
         padding_duration_ms: 1000
         start_delay: 2048
         end_delay: 16000

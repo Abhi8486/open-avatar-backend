@@ -144,22 +144,11 @@ class HandlerASRSarvam(HandlerBase, ABC):
                     output.set_main_data(transcript)
                     context.submit_data(output, finish_stream=True)
                 else:
-                    logger.warning("Sarvam ASR returned empty transcript — finishing stream with empty text so pipeline resets.")
-                    output = DataBundle(output_definition)
-                    output.set_main_data('')
-                    context.submit_data(output, finish_stream=True)
+                    logger.warning("Sarvam ASR returned empty transcript — ignoring (no downstream submission).")
             else:
                 logger.error(f"Sarvam AI Error: {response.status_code} - {response.text}")
-                # Finish stream on error so the pipeline doesn't hang
-                output = DataBundle(output_definition)
-                output.set_main_data('')
-                context.submit_data(output, finish_stream=True)
         except Exception as e:
             logger.error(f"Failed to call Sarvam AI STT API: {e}")
-            # Finish stream on exception so the pipeline doesn't hang
-            output = DataBundle(output_definition)
-            output.set_main_data('')
-            context.submit_data(output, finish_stream=True)
 
     def destroy_context(self, context: HandlerContext):
         pass
