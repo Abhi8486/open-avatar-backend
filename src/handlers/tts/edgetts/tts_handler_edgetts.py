@@ -117,7 +117,7 @@ class HandlerTTS(HandlerBase, ABC):
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(fetch_audio)
             try:
-                return future.result(timeout=5.0)
+                return future.result(timeout=10.0)
             except concurrent.futures.TimeoutError:
                 logger.error(f"TTS generation timed out for sentence: {sentence}")
                 return None
